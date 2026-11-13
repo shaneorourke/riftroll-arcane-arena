@@ -512,5 +512,29 @@ export function runCombatEngineTestSuite(): TestCaseResult[] {
     'Both attacks hidden during defence selection'
   );
 
+  const clashMatch = createInitialMatchState(DEFAULT_SETTINGS, 'p1');
+  const vulnerableMatch = {
+    ...clashMatch,
+    players: {
+      p1: { ...clashMatch.players.p1, hp: 18 },
+      p2: { ...clashMatch.players.p2, hp: 5 },
+    },
+  };
+  const clashAttack = selectAttackMagic(vulnerableMatch, 'fire', false);
+  const clashDefence = selectDefenceMagic(clashAttack, 'fire');
+  const clash = submitDefenceRoll(submitAttackRoll(clashDefence, 18), 19);
+  const stand = submitArcaneClashRolls(clash, 10, 10);
+  const standLost = submitLastStandRoll(stand, 19);
+  const standWon = submitLastStandRoll(stand, 20);
+  assertTest(
+    'clash-last-stand-damage', 'Match Progression',
+    'Tied Clash damage still applies to the opponent during Last Stand',
+    stand.pendingLastStandPlayerId === 'p2' &&
+      standLost.players.p1.hp === 13 && standLost.battleWinnerId === 'p1' &&
+      standWon.players.p2.hp === 1 && standWon.battleWinnerId === 'p2' &&
+      standWon.combatLog[0].clashResult?.winnerId === 'tie',
+    'Both Last Stand outcomes preserve the Clash shockwave'
+  );
+
   return results;
 }

@@ -1,6 +1,6 @@
-import { ELEMENT_SCHOOLS, evaluateElementalModifier } from './elements';
-import { isValidD20Roll } from './dice';
-import {
+import { ELEMENT_SCHOOLS, evaluateElementalModifier } from './elements.ts';
+import { isValidD20Roll } from './dice.ts';
+import type {
   ArcaneClashResolutionResult,
   AttackTier,
   DefenceOutcome,
@@ -10,7 +10,7 @@ import {
   MatchFormat,
   PlayerId,
   PlayerState,
-} from './types';
+} from './types.ts';
 
 export const ARCANE_METER_MAX = 100;
 

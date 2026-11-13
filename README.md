@@ -29,14 +29,14 @@ npm run lint
 npm run build
 ```
 
-You can also run the built-in **15-Test Deterministic Combat Engine Suite** directly in the browser under **How to Play & Tests → Engine Tests**, or execute it via `tsx`.
+You can also run the built-in **combat engine test suite** directly in the browser under **How to Play & Tests → Engine Tests**, or execute it via `tsx`.
 
 ---
 
 ## 2. Core Game Rules
 
 ### Eight Schools of Magic
-Every mage has unrestricted access to all 8 elemental schools on every turn:
+Every mage can cast from all eight schools. The last school used to attack is locked for that mage’s next defence:
 1. **Fire** (*Cinder Nova* / *Molten Aegis* / Ultimate: *Inferno Cataclysm*) — Defends strongly (+2) against **Ice**.
 2. **Water** (*Riptide Lance* / *Maelstrom Ward* / Ultimate: *Tidal Dragon*) — Defends strongly (+2) against **Fire**.
 3. **Earth** (*Tectonic Spike* / *Obsidian Bulwark* / Ultimate: *Titan's Wrath*) — Defends strongly (+2) against **Lightning**.
@@ -53,6 +53,14 @@ Every mage has unrestricted access to all 8 elemental schools on every turn:
 4. Attacker rolls a D20 (Digital cryptographic roll or Physical tabletop D20 input).
 5. Defender rolls a D20.
 6. Combat engine resolves the interaction, updates Health and Arcane Meters, plays elemental animations, and switches roles.
+
+### Arena Teleport
+
+Teleport uses your attack and passes play to the other mage. After two completed exchanges, either mage can teleport again.
+
+- **Glacier Rift** gives Ice attacks +4 to their effective roll. **Ember Forge** gives Fire attacks +3. Both mages can use these boosts.
+- **Storm Spire** gives the teleporter 20 Arcane Energy. **Flooded Temple** restores 12 HP. Both rewards respect their normal caps.
+- **Dark Realm** hides the chosen attack and Ultimate status until the defender picks a shield.
 
 ### Attack Damage Table (Natural D20)
 - **Natural 1**: Critical failure — **0 damage** (always fails, even with modifiers or Ultimate).
@@ -89,6 +97,6 @@ Every mage has unrestricted access to all 8 elemental schools on every turn:
 - `src/engine/combatEngine.ts` — Pure, deterministic combat resolution functions (`resolveCombatExchange`, `resolveArcaneClash`, `resolveLastStand`, `resolvePostDamageHealth`). Zero React or Firebase dependencies.
 - `src/engine/matchController.ts` — Immutable match and battle progression state machine.
 - `src/engine/aiController.ts` — Tactical AI decision engine for *Apprentice*, *Sorcerer*, and *Archmage* difficulties (never manipulates dice probabilities).
-- `src/engine/combatEngine.test.ts` — Automated test suite verifying all 15 core combat and match progression rules.
+- `src/engine/combatEngine.test.ts` — Automated checks for combat and match progression.
 - `src/multiplayer/transport.ts` — Abstract `MultiplayerTransport` interface for server-authoritative online rooms.
 - `src/components/` — Modular Arena Stage (HTML5 Canvas particle & beam renderer + stylized SVG mages), Dice Roller (Digital & Physical modes), Spell Selector, Tabletop 180° Face-to-Face layout, and HUD components.

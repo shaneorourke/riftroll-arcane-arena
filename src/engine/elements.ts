@@ -1,4 +1,4 @@
-import { ElementSchool } from './types';
+import type { ElementSchool } from './types.ts';
 
 export interface ElementSchoolConfig {
   id: ElementSchool;

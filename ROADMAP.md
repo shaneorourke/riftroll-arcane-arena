@@ -28,7 +28,7 @@ Choose a spell → roll → watch the hit → see what changed.
 - **Persistent Arcane Meter** carrying over across battles within Best-of-3 and Best-of-5 matches while resetting cleanly on new matches.
 - **Arcane Clash (18–19 vs 18–19)**, **Last Stand (Natural 20 comeback at 1 HP)**, and **Sudden Death (1 HP tiebreaker with infinite-loop protection)**.
 - **Solo vs AI** (*Apprentice*, *Sorcerer*, *Archmage*) and **Local Face-to-Face Multiplayer** (including both Side-by-Side and 180° Rotated Tabletop layouts).
-- **15-Test Automated Verification Suite** (`src/engine/combatEngine.test.ts`).
+- **Automated Combat Engine Checks** (`src/engine/combatEngine.test.ts`).
 
 ---
 

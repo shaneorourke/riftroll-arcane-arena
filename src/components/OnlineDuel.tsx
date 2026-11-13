@@ -79,6 +79,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
     const seen = seenRoom.current;
     if (seen?.code === next.code && next.revision <= seen.revision) return;
     if (next.exitedBy) {
+      setConfirmExit(false);
       setPlayback(undefined);
       setRoll(undefined);
       setRollingFace(null);
@@ -108,6 +109,11 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
         if (failure instanceof RoomError && [403, 404].includes(failure.status)) {
           sessionStorage.removeItem(seatKey(seat!.code));
           sessionStorage.removeItem(roomKey);
+          setConfirmExit(false);
+          setPlayback(undefined);
+          setRoll(undefined);
+          setRollingFace(null);
+          seenRoom.current = null;
           setError(failure.message);
           setRoom(null);
           setSeat(null);

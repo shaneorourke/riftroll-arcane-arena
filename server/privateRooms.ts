@@ -3,13 +3,13 @@ import { join, resolve } from 'node:path';
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
-import { ELEMENT_ORDER } from '../src/engine/elements';
+import { ELEMENT_ORDER } from '../src/engine/elements.ts';
 import {
   isAttackHidden, isArenaId, openArenaShift, completeExchangeAnimation, createInitialMatchState, selectAttackMagic, selectDefenceMagic,
   startNextBattle, submitArcaneClashRolls, submitAttackRoll, submitDefenceRoll, submitLastStandRoll,
-} from '../src/engine/matchController';
-import type { ElementSchool, MatchState, PlayerId } from '../src/engine/types';
-import type { RoomPlayback, RoomSnapshot } from '../src/multiplayer/transport';
+} from '../src/engine/matchController.ts';
+import type { ElementSchool, MatchState, PlayerId } from '../src/engine/types.ts';
+import type { RoomPlayback, RoomSnapshot } from '../src/multiplayer/transport.ts';
 
 const ROOM_LIFETIME_MS = 60 * 60 * 1000;
 const MAX_ROOMS = 500;

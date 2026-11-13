@@ -250,7 +250,7 @@ export const HowToPlayAndTestsPanel: React.FC<{ onClose: () => void }> = ({
                 Deterministic Combat Engine Verification Suite
               </h3>
               <p className="text-xs text-slate-400">
-                Live execution of all 15 unit & integration test assertions against pure TypeScript engine functions.
+                Live execution of the combat engine checks against pure TypeScript engine functions.
               </p>
             </div>
             <div className="font-mono text-sm font-bold text-emerald-300">

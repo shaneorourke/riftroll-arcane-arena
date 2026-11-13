@@ -6,9 +6,9 @@ import {
   resolveCombatExchange,
   resolveLastStand,
   resolvePostDamageHealth,
-} from './combatEngine';
-import { chooseRandomStarter } from './dice';
-import {
+} from './combatEngine.ts';
+import { chooseRandomStarter } from './dice.ts';
+import type {
   ArenaId,
   BattlePhase,
   CombatLogEntry,
@@ -17,7 +17,7 @@ import {
   MatchState,
   PlayerId,
   PlayerState,
-} from './types';
+} from './types.ts';
 
 export function createInitialMatchState(
   settings: MatchSettings,
@@ -401,7 +401,16 @@ export function submitLastStandRoll(
   const saviorState = state.players[saviorId];
   const opponentState = state.players[opponentId];
 
-  const lsResult = resolveLastStand(saviorState, opponentState, naturalRoll);
+  const clashResult = state.pendingClashP1Roll !== null && state.pendingClashP2Roll !== null
+    ? resolveArcaneClash(state.pendingClashP1Roll, state.pendingClashP2Roll, state.players.p1, state.players.p2)
+    : undefined;
+  const opponentDamage = clashResult
+    ? opponentId === 'p1' ? clashResult.damageToP1 : clashResult.damageToP2
+    : 0;
+  const lsResult = resolveLastStand(saviorState, {
+    ...opponentState,
+    hp: opponentState.hp - opponentDamage,
+  }, naturalRoll);
 
   // Mark Last Stand used for this battle
   const updatedSavior: PlayerState = {
@@ -438,7 +447,8 @@ export function submitLastStandRoll(
     damageToDefender: res.damageToDefender,
     counterDamageToAttacker: res.counterDamageToAttacker,
     summary: lsResult.summaryText,
-    detail: `${res.summaryText} → ${lsResult.summaryText}`,
+    detail: `${clashResult ? res.detailText : res.summaryText} → ${lsResult.summaryText}`,
+    clashResult,
     lastStandResult: lsResult,
   };
 
