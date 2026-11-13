@@ -47,6 +47,7 @@ import {
   arenaShiftRemaining,
   arenaAttackBonus,
   getArenaShift,
+  isArenaId,
   isAttackHidden,
   SHIFT_ARENAS,
   SHIFT_ARENA_IDS,
@@ -301,7 +302,7 @@ export default function App() {
   const controlsAtTop = isTabletopRotated && activeActorId === 'p2';
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090812] text-slate-100">
+    <div className={`min-h-screen flex flex-col bg-[#090812] text-slate-100 ${view === 'BATTLE' && isTabletopRotated ? 'tabletop-screen' : ''}`}>
       {/* Strict 3-Zone Top Bar Contract */}
       <header className="sticky top-0 z-[60] flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-800/90 bg-[#0c0a18]/95 px-3 py-2 backdrop-blur-md sm:px-6 lg:flex-nowrap">
         {/* Zone 1: Single text element wordmark */}
@@ -738,7 +739,7 @@ export default function App() {
         )}
 
         {view === 'BATTLE' && (
-          <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 space-y-4">
+          <div className={`max-w-6xl mx-auto px-3 sm:px-6 py-4 ${isTabletopRotated ? 'tabletop-match' : 'space-y-4'}`}>
             {/* Match Score & Battle Sub-Toolbar */}
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs">
               <div className="flex items-center gap-2 text-slate-300">
@@ -816,7 +817,7 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 tabletop-board">
               {/* If Tabletop 180-Degree Mode is active, show Player 2 HUD rotated at the top */}
               {isTabletopRotated ? (
                 <div className="space-y-3">
@@ -839,6 +840,7 @@ export default function App() {
                       }
                       requiredWins={requiredWins}
                       compact
+                      tabletop
                     />
                   </div>
                 </div>
@@ -928,13 +930,14 @@ export default function App() {
                   }
                   requiredWins={requiredWins}
                   compact
+                  tabletop
                 />
               )}
 
               {/* Keep one set of controls and move it to the active player’s edge. */}
               {activeActorId && (
                 <div
-                  className={`rounded-xl ring-1 ring-amber-400/50 ${controlsAtTop ? 'order-first rotate-180' : ''}`}
+                  className={`tabletop-controls rounded-xl ring-1 ring-amber-400/50 ${controlsAtTop ? 'order-first rotate-180' : ''}`}
                 >
                   {lastStandId && (
                     <DiceRoller
@@ -970,7 +973,21 @@ export default function App() {
 
                   {matchState.phase === 'SELECT_ATTACK_MAGIC' && !attacker.isAI && arenaShiftRemaining(matchState) === 0 && (
                     <div className="flex flex-wrap gap-2 p-2">
-                      {SHIFT_ARENA_IDS.map((id) => (
+                      {isTabletopRotated ? (
+                        <select aria-label="Teleport" value="" className="w-full rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 text-xs"
+                          onChange={(event) => {
+                            const id = event.currentTarget.value;
+                            if (isArenaId(id)) {
+                              setArmedUltimateDraft(false);
+                              setMatchState((state) => openArenaShift(state, id));
+                            }
+                          }}>
+                          <option value="">Teleport instead of casting</option>
+                          {SHIFT_ARENA_IDS.map((id) => (
+                            <option key={id} value={id}>{SHIFT_ARENAS[id].name} · {SHIFT_ARENAS[id].reward}</option>
+                          ))}
+                        </select>
+                      ) : SHIFT_ARENA_IDS.map((id) => (
                         <button key={id} type="button" className="rounded-lg border border-slate-500 px-3 py-2 text-sm font-bold"
                           onClick={() => { setArmedUltimateDraft(false); setMatchState((state) => openArenaShift(state, id)); }}>
                           Teleport to {SHIFT_ARENAS[id].name} · {SHIFT_ARENAS[id].reward}
@@ -1052,7 +1069,7 @@ export default function App() {
             </div>
 
             {matchState.combatLog.length > 0 && (
-              <details className="rounded-xl bg-slate-900/80 border border-slate-800 p-4">
+              <details className="tabletop-log rounded-xl bg-slate-900/80 border border-slate-800 p-4">
                 <summary className="cursor-pointer text-xs font-bold text-slate-300">
                   Combat log
                 </summary>

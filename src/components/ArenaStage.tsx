@@ -480,7 +480,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
 
   return (
     <div
-      className={`relative w-full h-64 sm:h-76 rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-[#131026] via-[#0d0b1a] to-[#080711] shadow-2xl ${
+      className={`arena-stage relative w-full h-64 sm:h-76 rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-[#131026] via-[#0d0b1a] to-[#080711] shadow-2xl ${
         !reducedMotion && isHeavyImpact
           ? 'animate-shake-heavy'
           : !reducedMotion && isAnimatingExchange
@@ -649,7 +649,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           )}
 
           <div
-            className={`relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center ${
+            className={`arena-mage relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center ${
               reducedMotion ? '' : 'animate-float-slow'
             }`}
             style={{
@@ -682,7 +682,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           )}
 
           <div
-            className={`relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center ${
+            className={`arena-mage relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center ${
               reducedMotion ? '' : 'animate-float-slow'
             }`}
             style={{

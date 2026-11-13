@@ -12,6 +12,7 @@ interface PlayerHudCardProps {
   isUltimateSelected?: boolean;
   requiredWins: number;
   compact?: boolean;
+  tabletop?: boolean;
 }
 
 export const PlayerHudCard: React.FC<PlayerHudCardProps> = ({
@@ -21,6 +22,7 @@ export const PlayerHudCard: React.FC<PlayerHudCardProps> = ({
   isUltimateSelected = false,
   requiredWins,
   compact = false,
+  tabletop = false,
 }) => {
   const hpPercent = Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100));
   const meterPercent = Math.max(
@@ -29,6 +31,20 @@ export const PlayerHudCard: React.FC<PlayerHudCardProps> = ({
   );
   const isUltimateReady = player.arcaneMeter >= ARCANE_METER_MAX;
   const school = selectedElement ? ELEMENT_SCHOOLS[selectedElement] : null;
+
+  if (compact && tabletop) {
+    return (
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs">
+        <span className="truncate font-bold">{player.name}</span>
+        <span className="flex items-center gap-1 text-emerald-200">
+          <Heart aria-hidden="true" className="size-3" /> {player.hp}/{player.maxHp} HP
+        </span>
+        <span className="flex items-center gap-1 text-amber-200" aria-label={`Arcane ${player.arcaneMeter} of ${ARCANE_METER_MAX}`}>
+          <Sparkles aria-hidden="true" className="size-3" /> {player.arcaneMeter}/{ARCANE_METER_MAX}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
