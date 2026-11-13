@@ -3,7 +3,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
 import { ELEMENT_ORDER } from '../src/engine/elements';
 import {
-  completeExchangeAnimation, createInitialMatchState, selectAttackMagic, selectDefenceMagic,
+  openGlacierRift, completeExchangeAnimation, createInitialMatchState, selectAttackMagic, selectDefenceMagic,
   startNextBattle, submitArcaneClashRolls, submitAttackRoll, submitDefenceRoll, submitLastStandRoll,
 } from '../src/engine/matchController';
 import type { ElementSchool, MatchState, PlayerId } from '../src/engine/types';
@@ -113,7 +113,9 @@ function applyIntent(room: Room, seat: PlayerId, body: Record<string, unknown>):
   const attacker = state.activeAttackerId;
   const defender = attacker === 'p1' ? 'p2' : 'p1';
   let next = state;
-  if (body.type === 'attack' && seat === attacker && ELEMENT_ORDER.includes(body.element as ElementSchool)) {
+  if (body.type === 'open-glacier-rift' && seat === attacker) {
+    next = openGlacierRift(state);
+  } else if (body.type === 'attack' && seat === attacker && ELEMENT_ORDER.includes(body.element as ElementSchool)) {
     next = selectAttackMagic(state, body.element as ElementSchool, body.ultimate === true);
   } else if (body.type === 'defend' && seat === defender && ELEMENT_ORDER.includes(body.element as ElementSchool)) {
     next = selectDefenceMagic(state, body.element as ElementSchool);

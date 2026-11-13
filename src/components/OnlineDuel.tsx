@@ -2,6 +2,7 @@ import { soundFX } from '../utils/sound';
 import { ExitMatchDialog } from './ExitMatchDialog';
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
+import { glacierAttackBonus, glacierRiftRemaining } from '../engine/matchController';
 import { ArenaStage } from './ArenaStage';
 import { PlayerHudCard } from './PlayerHudCard';
 import { SpellSelector } from './SpellSelector';
@@ -214,7 +215,13 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
             clashRolls={clash?.rolls ?? (phase === 'ARCANE_CLASH_ROLL' ? {} : null)}
             lastStandId={lastStand?.playerId ?? (playback ? null : state.pendingLastStandPlayerId)}
             lastStandRoll={lastStand?.roll ?? null}
+            glacierTurns={glacierRiftRemaining(state)}
             reducedMotion={reducedMotion} onSkipAnimation={() => setPlayback(undefined)} />
+          {acting && phase === 'SELECT_ATTACK_MAGIC' && state.glacierRiftStartedOn === undefined && (
+            <button type="button" className={button} disabled={disabled} onClick={() => act({ type: 'open-glacier-rift' })}>
+              Open Glacier Rift
+            </button>
+          )}
           {acting && (phase === 'SELECT_ATTACK_MAGIC' || phase === 'SELECT_DEFENCE_MAGIC') && (
             <SpellSelector mode={phase === 'SELECT_ATTACK_MAGIC' ? 'attack' : 'defence'} playerName={player.name}
               arcaneMeter={player.arcaneMeter} useUltimate={ultimate} onToggleUltimate={setUltimate}
@@ -232,7 +239,9 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
           )}
           {!playback && phase === 'MATCH_OVER' && state.matchWinnerId && <p className="text-xl font-bold">{state.players[state.matchWinnerId].name} wins!</p>}
           {!playback && !acting && actor && <p role="status">Waiting for {state.players[actor].name}…</p>}
-          {state.attackRollResult !== null && <p>Attack roll {state.attackRollResult}</p>}
+          {state.attackRollResult !== null && (
+            <p>Attack roll {state.attackRollResult}{glacierAttackBonus(state) > 0 && ' · Glacier Rift +2'}</p>
+          )}
           {!playback && state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
         </>
       )}

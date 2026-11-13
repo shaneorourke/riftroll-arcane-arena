@@ -25,6 +25,7 @@ export type DuelIntent =
   | { type: 'attack'; element: ElementSchool; ultimate: boolean }
   | { type: 'defend'; element: ElementSchool }
   | { type: 'roll' }
+  | { type: 'open-glacier-rift' }
   | { type: 'next-battle' };
 
 export class RoomError extends Error {
