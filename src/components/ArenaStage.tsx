@@ -19,6 +19,7 @@ interface ArenaStageProps {
   activeAttackerId: PlayerId;
   activeActorId: PlayerId | null;
   tabletop?: boolean;
+  glacierTurns?: number;
   lastStandId?: PlayerId | null;
   lastStandRoll?: number | null;
   clashRolls?: Partial<Record<PlayerId, number>> | null;
@@ -70,6 +71,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
   activeAttackerId,
   activeActorId,
   tabletop = false,
+  glacierTurns = 0,
   lastStandId = null,
   lastStandRoll = null,
   clashRolls = null,
@@ -86,6 +88,10 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
   useEffect(() => {
     if (isAnimatingExchange && pendingResolution) soundFX.playExchange(pendingResolution);
   }, [isAnimatingExchange, pendingResolution]);
+
+  useEffect(() => {
+    if (glacierTurns === 2) soundFX.playGlacierRift();
+  }, [glacierTurns]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -461,6 +467,17 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           : ''
       }`}
     >
+      {glacierTurns > 0 && (
+        <>
+          <div aria-hidden="true" className="glacier-frost pointer-events-none absolute inset-0" data-static={reducedMotion} />
+          <div role="status" className="pointer-events-none absolute inset-x-0 bottom-2 z-20 text-center">
+            <span className="rounded-full bg-slate-950/90 px-2 py-1 text-xs font-bold text-cyan-100">
+              ❄ Glacier Rift · Ice attack +2 · {glacierTurns === 2 ? '●●' : '●'}
+              <span className="sr-only"> {glacierTurns} exchanges left</span>
+            </span>
+          </div>
+        </>
+      )}
       {resolution && <SignatureSpell resolution={resolution} reducedMotion={reducedMotion} />}
       {clashRolls && (
         <>

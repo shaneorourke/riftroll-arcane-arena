@@ -43,6 +43,9 @@ import {
   createInitialMatchState,
   selectAttackMagic,
   selectDefenceMagic,
+  openGlacierRift,
+  glacierRiftRemaining,
+  glacierAttackBonus,
   startNextBattle,
   submitArcaneClashRolls,
   submitAttackRoll,
@@ -881,6 +884,7 @@ export default function App() {
                 activeAttackerId={matchState.activeAttackerId}
                 activeActorId={activeActorId}
                 tabletop={isTabletopRotated}
+                glacierTurns={glacierRiftRemaining(matchState)}
                 clashRolls={isClash ? clashRolls : null}
                 lastStandId={lastStandId}
                 lastStandRoll={lastStandRoll}
@@ -955,6 +959,14 @@ export default function App() {
                     />
                   )}
 
+                  {matchState.phase === 'SELECT_ATTACK_MAGIC' && !attacker.isAI &&
+                    matchState.glacierRiftStartedOn === undefined && (
+                    <button type="button" className="m-2 rounded-lg border border-cyan-500 px-3 py-2 text-sm font-bold text-cyan-200"
+                      onClick={() => setMatchState(openGlacierRift)}>
+                      Open Glacier Rift
+                    </button>
+                  )}
+
                   {matchState.phase === 'SELECT_ATTACK_MAGIC' && (
                     <SpellSelector
                       mode="attack"
@@ -996,7 +1008,7 @@ export default function App() {
                           ELEMENT_SCHOOLS[matchState.selectedAttackElement]
                             .primaryHex
                         }
-                        modifier={currentMod.attackModifier}
+                        modifier={currentMod.attackModifier + glacierAttackBonus(matchState)}
                         autoRollForAI={attacker.isAI}
                         reducedMotion={matchState.settings.reducedMotion}
                         onRollConfirmed={handleAttackRollConfirmed}

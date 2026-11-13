@@ -128,11 +128,12 @@ export function resolveCombatExchange(
     throw new Error('Cannot unleash an Ultimate attack without 100 Arcane Energy.');
   }
 
-  const { attackModifier, defenceModifier, advantage } = evaluateElementalModifier(
+  const { attackModifier: elementalAttackModifier, defenceModifier, advantage } = evaluateElementalModifier(
     attackElement,
     defenceElement
   );
 
+  const attackModifier = elementalAttackModifier + (input.arenaAttackBonus ?? 0);
   const effectiveAttackRoll = naturalAttackRoll + attackModifier;
   const effectiveDefenceRoll = naturalDefenceRoll + defenceModifier;
 

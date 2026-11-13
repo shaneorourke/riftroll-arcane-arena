@@ -18,6 +18,8 @@ import {
   createInitialMatchState,
   selectAttackMagic,
   selectDefenceMagic,
+  openGlacierRift,
+  glacierRiftRemaining,
   startNextBattle,
   submitArcaneClashRolls,
   submitAttackRoll,
@@ -462,6 +464,32 @@ export function runCombatEngineTestSuite(): TestCaseResult[] {
       accepted.phase === 'ROLL_ATTACK_D20' && accepted.players.p1.defenceLock === undefined &&
       accepted.players.p2.defenceLock === 'wind' && aiAvoidsLock,
     `Blocked Ice: ${blocked === nextCast}; AI avoids Ice: ${aiAvoidsLock}`
+  );
+
+  const glacier = openGlacierRift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'));
+  const resolveGlacierTurn = (state: typeof glacier, element: 'ice' | 'fire') => {
+    const attack = selectAttackMagic(state, element, false);
+    const defence = selectDefenceMagic(attack, 'light');
+    return submitDefenceRoll(submitAttackRoll(defence, 12), 8);
+  };
+  const iceExchange = resolveGlacierTurn(glacier, 'ice');
+  const secondExchange = completeExchangeAnimation(iceExchange);
+  const fireExchange = resolveGlacierTurn(secondExchange, 'fire');
+  const expired = completeExchangeAnimation(fireExchange);
+  const nextBattle = startNextBattle({ ...expired, phase: 'BATTLE_OVER' });
+  assertTest(
+    'glacier-rift',
+    'Match Progression',
+    'Glacier Rift boosts Ice attacks for two exchanges and can open once per battle',
+    glacierRiftRemaining(glacier) === 2 &&
+      iceExchange.pendingResolution?.effectiveAttackRoll === 14 &&
+      iceExchange.pendingResolution?.naturalAttackRoll === 12 &&
+      glacierRiftRemaining(secondExchange) === 1 &&
+      fireExchange.pendingResolution?.effectiveAttackRoll === 12 &&
+      glacierRiftRemaining(expired) === 0 &&
+      openGlacierRift(expired) === expired &&
+      glacierRiftRemaining(openGlacierRift(nextBattle)) === 2,
+    'Ice +2, Fire +0, two exchanges, resets for next battle'
   );
 
   return results;

@@ -317,3 +317,14 @@
 .signature-impact[data-static="true"],
 .element-ultimate[data-static="true"] { animation: none; }
 .element-ultimate[data-static="true"] { opacity: .55; }
+
+.glacier-frost {
+  background: radial-gradient(ellipse, transparent 35%, #0891b23d 75%, #cffafe72);
+  box-shadow: inset 0 0 40px #67e8f999;
+  animation: glacier-arrival 700ms ease-out both;
+}
+.glacier-frost[data-static="true"] { animation: none; }
+@keyframes glacier-arrival {
+  from { opacity: 0; scale: .72; }
+  to { opacity: 1; scale: 1; }
+}

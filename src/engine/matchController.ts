@@ -98,6 +98,23 @@ function getAITitle(difficulty: MatchSettings['aiDifficulty']): string {
   }
 }
 
+export function glacierRiftRemaining(state: MatchState): number {
+  return state.glacierRiftStartedOn === undefined
+    ? 0
+    : Math.max(0, state.glacierRiftStartedOn + 2 - state.turnNumber);
+}
+
+export function openGlacierRift(state: MatchState): MatchState {
+  if (state.phase !== 'SELECT_ATTACK_MAGIC' || state.glacierRiftStartedOn !== undefined) {
+    return state;
+  }
+  return { ...state, glacierRiftStartedOn: state.turnNumber };
+}
+
+export function glacierAttackBonus(state: MatchState): number {
+  return state.selectedAttackElement === 'ice' && glacierRiftRemaining(state) > 0 ? 2 : 0;
+}
+
 export function selectAttackMagic(
   state: MatchState,
   element: ElementSchool,
@@ -182,6 +199,7 @@ export function submitDefenceRoll(
     attackerId,
     defenderId,
     attackElement: state.selectedAttackElement,
+    arenaAttackBonus: glacierAttackBonus(state),
     defenceElement: state.selectedDefenceElement,
     isUltimate: state.selectedUseUltimate,
     naturalAttackRoll: state.attackRollResult,
@@ -558,6 +576,7 @@ export function startNextBattle(state: MatchState): MatchState {
   return {
     ...state,
     battleNumber: nextBattleNumber,
+    glacierRiftStartedOn: undefined,
     turnNumber: 1,
     phase: 'SELECT_ATTACK_MAGIC',
     startingPlayerThisBattle: nextStarter,

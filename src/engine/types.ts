@@ -71,6 +71,7 @@ export interface ExchangeResolutionInput {
   isUltimate: boolean;
   naturalAttackRoll: number; // 1..20
   naturalDefenceRoll: number; // 1..20
+  arenaAttackBonus?: number;
   attackerState: PlayerState;
   defenderState: PlayerState;
 }
@@ -171,6 +172,7 @@ export interface MatchState {
   startingPlayerThisBattle: PlayerId;
   firstBattleStarter: PlayerId;
   activeAttackerId: PlayerId;
+  glacierRiftStartedOn?: number;
   selectedAttackElement: ElementSchool | null;
   selectedUseUltimate: boolean;
   selectedDefenceElement: ElementSchool | null;

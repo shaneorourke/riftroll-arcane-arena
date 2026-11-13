@@ -35,6 +35,24 @@ class SoundEffectsManager {
     return this.ctx;
   }
 
+  public playGlacierRift(): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    for (const [index, frequency] of [523, 784, 1047].entries()) {
+      const start = ctx.currentTime + index * 0.08;
+      const tone = ctx.createOscillator();
+      const gain = ctx.createGain();
+      tone.frequency.value = frequency;
+      gain.gain.setValueAtTime(0.04, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+      tone.connect(gain);
+      gain.connect(ctx.destination);
+      tone.start(start);
+      tone.stop(start + 0.3);
+      tone.onended = () => { tone.disconnect(); gain.disconnect(); };
+    }
+  }
+
   public unlock(): void {
     this.getContext();
   }
