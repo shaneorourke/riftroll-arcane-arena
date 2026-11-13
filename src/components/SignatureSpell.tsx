@@ -1,5 +1,6 @@
 import { useId } from 'react';
 import { createPortal } from 'react-dom';
+import { ELEMENT_SCHOOLS } from '../engine/elements';
 import { ExchangeResolutionResult } from '../engine/types';
 
 export function SignatureSpell({
@@ -14,7 +15,12 @@ export function SignatureSpell({
   if (defenceOutcome === 'attack_fumbled') return null;
 
   const fromLeft = attackerId === 'p1';
-  const impact = fromLeft ? '73%' : '27%';
+  const ice = attackElement === 'ice';
+  const blocked = defenceOutcome === 'perfect_block';
+  const cracked = defenceOutcome === 'half_damage';
+  const impact = ice && defenceOutcome === 'full_damage'
+    ? fromLeft ? '78%' : '22%'
+    : fromLeft ? '73%' : '27%';
   const reflected = defenceOutcome === 'parry';
 
   if (attackElement === 'dark' && isUltimate) {
@@ -48,6 +54,38 @@ export function SignatureSpell({
   }
 
   if (attackElement !== 'fire' && attackElement !== 'ice') return null;
+
+  if (ice && (blocked || cracked || reflected)) {
+    const wardColor = reflected ? '#fde68a' : ELEMENT_SCHOOLS[resolution.defenceElement].primaryHex;
+    return (
+      <svg
+        aria-hidden="true"
+        className="ice-ward pointer-events-none absolute z-[11]"
+        data-static={reducedMotion}
+        data-outcome={defenceOutcome}
+        style={{ left: impact, color: wardColor }}
+        viewBox="0 0 160 160"
+      >
+        <g transform={fromLeft ? undefined : 'translate(160 0) scale(-1 1)'}>
+          <g className="ice-ward-shield">
+            <path d="M81 19 111 35 108 87Q105 118 81 140 57 118 54 87L51 35Z" fill="currentColor" fillOpacity=".22" stroke="currentColor" strokeWidth="5" />
+            <path d="M81 34 99 44 97 84Q94 107 81 124 67 107 65 84L63 44Z" fill="none" stroke="#effaff" strokeOpacity=".85" strokeWidth="2" />
+            <path d="m81 56 17 24-17 24-17-24Z" fill="currentColor" />
+            {cracked && <path d="m81 48-8 30 15 4-12 32" fill="none" stroke="#fff" strokeWidth="3" />}
+          </g>
+          {!reflected && (
+            <g className="ice-ward-shards" fill="#b7f5ff" stroke="#fff" strokeWidth="1.5">
+              <path d="m59 62-25-30 8 29Z" />
+              <path d="m60 75-38-10 27 23Z" />
+              <path d="m59 88-27 25 27-10Z" />
+              <path d="m65 97-8 33 18-22Z" />
+            </g>
+          )}
+        </g>
+      </svg>
+    );
+  }
+
 
   return (
     <svg

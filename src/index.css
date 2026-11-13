@@ -150,3 +150,35 @@
 .dark-ultimate[data-static="true"] * { animation: none; }
 .dark-ultimate[data-static="true"] .dark-ultimate-wave { opacity: .18; }
 .dark-ultimate[data-static="true"] .dark-ultimate-eclipse { opacity: .65; }
+
+.ice-ward {
+  top: 48%;
+  width: clamp(96px, 19vw, 170px);
+  translate: -50% -50%;
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+.ice-ward-shield {
+  transform-origin: center;
+  animation: ice-ward-rise 900ms 220ms ease-out both;
+}
+
+.ice-ward-shards {
+  transform-origin: center;
+  animation: ice-ward-shatter 480ms 350ms ease-out both;
+}
+
+@keyframes ice-ward-rise {
+  0% { opacity: 0; scale: .65; }
+  15% { opacity: 1; scale: 1.08; }
+  50% { opacity: .9; scale: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes ice-ward-shatter {
+  0% { opacity: 0; scale: .65; }
+  18% { opacity: 1; }
+  100% { opacity: 0; scale: 1.35; }
+}
+
+.ice-ward[data-static="true"] * { animation: none; }

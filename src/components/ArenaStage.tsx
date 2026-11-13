@@ -151,6 +151,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
 
     const startedAt = performance.now();
     let impactShown = false;
+    let iceReturnShown = false;
 
     const render = () => {
       frame += 1;
@@ -182,19 +183,17 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
         const atkCfg = ELEMENT_SCHOOLS[pendingResolution.attackElement];
         const defCfg = ELEMENT_SCHOOLS[pendingResolution.defenceElement];
 
-        const fromX =
-          pendingResolution.attackerId === 'p1'
-            ? canvas.width * 0.22
-            : canvas.width * 0.78;
-        const toX =
-          pendingResolution.attackerId === 'p1'
-            ? canvas.width * 0.73
-            : canvas.width * 0.27;
+        const fromLeft = pendingResolution.attackerId === 'p1';
+        const fromX = canvas.width * (fromLeft ? 0.22 : 0.78);
+        const defenderX = canvas.width * (fromLeft ? 0.78 : 0.22);
         const beamY = canvas.height * 0.48;
 
         const fumbled = pendingResolution.defenceOutcome === 'attack_fumbled';
         const parried = pendingResolution.defenceOutcome === 'parry';
-        const direction = Math.sign(toX - fromX);
+        const ice = pendingResolution.attackElement === 'ice' && !fumbled;
+        const direction = fromLeft ? 1 : -1;
+        const warded = pendingResolution.defenceOutcome !== 'full_damage';
+        const toX = defenderX - direction * canvas.width * (ice && !warded ? 0 : 0.05);
         const progress = reducedMotion ? 1 : Math.max(0, Math.min(1, (elapsed - CAST_WINDUP_MS) / (IMPACT_MS - CAST_WINDUP_MS)));
         const atImpact = progress === 1;
         const castEnd = fromX + (toX - fromX) * progress * (fumbled ? 0.12 : 1);
@@ -229,10 +228,14 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
 
         const signatureProjectile = !fumbled &&
           (pendingResolution.attackElement === 'fire' || pendingResolution.attackElement === 'ice');
-        if (signatureProjectile && progress > 0 && (!atImpact || reducedMotion)) {
+        const iceReturning = ice && parried && atImpact;
+        const iceRebound = reducedMotion ? 0.55 : Math.min(1, Math.max(0, (elapsed - IMPACT_MS) / PARRY_REBOUND_MS));
+        const showIncoming = progress > 0 && (!atImpact || (reducedMotion && !iceReturning));
+        if (signatureProjectile && (showIncoming || (iceReturning && (reducedMotion || iceRebound < 1)))) {
           ctx.save();
-          ctx.translate(castEnd, beamY);
-          ctx.scale(direction, 1);
+          const shardX = iceReturning ? toX + (fromX - toX) * iceRebound : castEnd;
+          ctx.translate(shardX, beamY);
+          ctx.scale(iceReturning ? -direction : direction, 1);
           ctx.shadowColor = atkCfg.primaryHex;
           ctx.shadowBlur = 20;
           const trail = ctx.createLinearGradient(-115, 0, 12, 0);
@@ -299,7 +302,12 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           ctx.restore();
         }
 
-        if (parried && atImpact) {
+        if (iceReturning && iceRebound === 1 && !iceReturnShown) {
+          iceReturnShown = true;
+          spawnBurst(fromX, beamY, '#dffaff', '#60a5fa', 24, 0.9);
+        }
+
+        if (parried && atImpact && !ice) {
           const rebound = reducedMotion ? 0.7 : Math.min(1, (elapsed - IMPACT_MS) / PARRY_REBOUND_MS);
           const sparkX = toX + (fromX - toX) * rebound;
           if (reducedMotion || elapsed < 700) {
@@ -318,7 +326,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
         }
 
         // Draw Defender's Elemental Barrier at `toX`
-        if (!fumbled && (reducedMotion || elapsed >= 240)) {
+        if (!fumbled && !ice && (reducedMotion || elapsed >= 240)) {
           ctx.save();
           ctx.translate(toX, beamY);
           ctx.strokeStyle =

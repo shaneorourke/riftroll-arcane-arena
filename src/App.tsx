@@ -245,6 +245,7 @@ export default function App() {
       : matchState.phase === 'SELECT_DEFENCE_MAGIC' || matchState.phase === 'ROLL_DEFENCE_D20'
       ? defenderId
       : null;
+  const controlsAtTop = isTabletopRotated && activeActorId === 'p2';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#090812] text-slate-100">
@@ -723,10 +724,54 @@ export default function App() {
               </div>
             </div>
 
-            {/* If Tabletop 180-Degree Mode is active, show Player 2 HUD rotated at the top */}
-            {isTabletopRotated ? (
-              <div className="space-y-3">
-                <div className="rotate-180">
+            <div className="flex flex-col gap-4">
+              {/* If Tabletop 180-Degree Mode is active, show Player 2 HUD rotated at the top */}
+              {isTabletopRotated ? (
+                <div className="space-y-3">
+                  <div className="rotate-180">
+                    <PlayerHudCard
+                      player={matchState.players.p2}
+                      role={
+                        matchState.activeAttackerId === 'p2'
+                          ? 'attacker'
+                          : 'defender'
+                      }
+                      selectedElement={
+                        matchState.activeAttackerId === 'p2'
+                          ? matchState.selectedAttackElement
+                          : matchState.selectedDefenceElement
+                      }
+                      isUltimateSelected={
+                        matchState.activeAttackerId === 'p2' &&
+                        (matchState.selectedUseUltimate || armedUltimateDraft)
+                      }
+                      requiredWins={requiredWins}
+                      compact
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Standard Side-by-Side Dual HUD */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <PlayerHudCard
+                    player={matchState.players.p1}
+                    role={
+                      matchState.activeAttackerId === 'p1'
+                        ? 'attacker'
+                        : 'defender'
+                    }
+                    selectedElement={
+                      matchState.activeAttackerId === 'p1'
+                        ? matchState.selectedAttackElement
+                        : matchState.selectedDefenceElement
+                    }
+                    isUltimateSelected={
+                      matchState.activeAttackerId === 'p1' &&
+                      (matchState.selectedUseUltimate || armedUltimateDraft)
+                    }
+                    requiredWins={requiredWins}
+                  />
+
                   <PlayerHudCard
                     player={matchState.players.p2}
                     role={
@@ -744,19 +789,36 @@ export default function App() {
                       (matchState.selectedUseUltimate || armedUltimateDraft)
                     }
                     requiredWins={requiredWins}
-                    compact
                   />
                 </div>
-              </div>
-            ) : (
-              /* Standard Side-by-Side Dual HUD */
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              )}
+
+              {/* Central Magical Arena Stage */}
+              <ArenaStage
+                p1={matchState.players.p1}
+                p2={matchState.players.p2}
+                activeAttackerId={matchState.activeAttackerId}
+                activeActorId={activeActorId}
+                tabletop={isTabletopRotated}
+                selectedAttackElement={matchState.selectedAttackElement}
+                selectedDefenceElement={matchState.selectedDefenceElement}
+                selectedUseUltimate={
+                  matchState.selectedUseUltimate || armedUltimateDraft
+                }
+                isAnimatingExchange={matchState.phase === 'ANIMATING_EXCHANGE'}
+                pendingResolution={matchState.pendingResolution}
+                reducedMotion={matchState.settings.reducedMotion}
+                onSkipAnimation={() =>
+                  setMatchState((prev) => completeExchangeAnimation(prev))
+                }
+              />
+
+              {/* Tabletop Bottom Player 1 HUD */}
+              {isTabletopRotated && (
                 <PlayerHudCard
                   player={matchState.players.p1}
                   role={
-                    matchState.activeAttackerId === 'p1'
-                      ? 'attacker'
-                      : 'defender'
+                    matchState.activeAttackerId === 'p1' ? 'attacker' : 'defender'
                   }
                   selectedElement={
                     matchState.activeAttackerId === 'p1'
@@ -768,143 +830,84 @@ export default function App() {
                     (matchState.selectedUseUltimate || armedUltimateDraft)
                   }
                   requiredWins={requiredWins}
+                  compact
                 />
+              )}
 
-                <PlayerHudCard
-                  player={matchState.players.p2}
-                  role={
-                    matchState.activeAttackerId === 'p2'
-                      ? 'attacker'
-                      : 'defender'
-                  }
-                  selectedElement={
-                    matchState.activeAttackerId === 'p2'
-                      ? matchState.selectedAttackElement
-                      : matchState.selectedDefenceElement
-                  }
-                  isUltimateSelected={
-                    matchState.activeAttackerId === 'p2' &&
-                    (matchState.selectedUseUltimate || armedUltimateDraft)
-                  }
-                  requiredWins={requiredWins}
-                />
+              {/* Keep one set of controls and move it to the active player’s edge. */}
+              {activeActorId && (
+                <div
+                  className={`rounded-xl ring-1 ring-amber-400/50 ${controlsAtTop ? 'order-first rotate-180' : ''}`}
+                >
+                  {matchState.phase === 'SELECT_ATTACK_MAGIC' && (
+                    <SpellSelector
+                      mode="attack"
+                      playerName={attacker.name}
+                      arcaneMeter={attacker.arcaneMeter}
+                      useUltimate={armedUltimateDraft}
+                      onToggleUltimate={setArmedUltimateDraft}
+                      disabled={attacker.isAI}
+                      onSelectElement={handleSelectAttack}
+                    />
+                  )}
+
+                  {matchState.phase === 'SELECT_DEFENCE_MAGIC' && (
+                    <SpellSelector
+                      mode="defence"
+                      playerName={defender.name}
+                      arcaneMeter={defender.arcaneMeter}
+                      useUltimate={false}
+                      opposingAttackElement={matchState.selectedAttackElement}
+                      lockedElement={matchState.settings.defenceLockout ? defender.defenceLock : undefined}
+                      disabled={defender.isAI}
+                      onSelectElement={handleSelectDefence}
+                    />
+                  )}
+
+                  {matchState.phase === 'ROLL_ATTACK_D20' &&
+                    matchState.selectedAttackElement && (
+                      <DiceRoller
+                        diceMode={matchState.settings.diceMode}
+                        roleLabel={`Attack Roll (${
+                          matchState.selectedUseUltimate
+                            ? ELEMENT_SCHOOLS[matchState.selectedAttackElement]
+                                .ultimateName
+                            : ELEMENT_SCHOOLS[matchState.selectedAttackElement]
+                                .offensiveSpellName
+                        })`}
+                        playerName={attacker.name}
+                        accentHex={
+                          ELEMENT_SCHOOLS[matchState.selectedAttackElement]
+                            .primaryHex
+                        }
+                        modifier={currentMod.attackModifier}
+                        autoRollForAI={attacker.isAI}
+                        reducedMotion={matchState.settings.reducedMotion}
+                        onRollConfirmed={handleAttackRollConfirmed}
+                      />
+                    )}
+
+                  {matchState.phase === 'ROLL_DEFENCE_D20' &&
+                    matchState.selectedDefenceElement && (
+                      <DiceRoller
+                        diceMode={matchState.settings.diceMode}
+                        roleLabel={`Defence Roll (${
+                          ELEMENT_SCHOOLS[matchState.selectedDefenceElement]
+                            .defensiveSpellName
+                        } vs Natural ${matchState.attackRollResult} Attack)`}
+                        playerName={defender.name}
+                        accentHex={
+                          ELEMENT_SCHOOLS[matchState.selectedDefenceElement]
+                            .primaryHex
+                        }
+                        modifier={currentMod.defenceModifier}
+                        autoRollForAI={defender.isAI}
+                        reducedMotion={matchState.settings.reducedMotion}
+                        onRollConfirmed={handleDefenceRollConfirmed}
+                      />
+                    )}
               </div>
-            )}
-
-            {/* Central Magical Arena Stage */}
-            <ArenaStage
-              p1={matchState.players.p1}
-              p2={matchState.players.p2}
-              activeAttackerId={matchState.activeAttackerId}
-              activeActorId={activeActorId}
-              tabletop={isTabletopRotated}
-              selectedAttackElement={matchState.selectedAttackElement}
-              selectedDefenceElement={matchState.selectedDefenceElement}
-              selectedUseUltimate={
-                matchState.selectedUseUltimate || armedUltimateDraft
-              }
-              isAnimatingExchange={matchState.phase === 'ANIMATING_EXCHANGE'}
-              pendingResolution={matchState.pendingResolution}
-              reducedMotion={matchState.settings.reducedMotion}
-              onSkipAnimation={() =>
-                setMatchState((prev) => completeExchangeAnimation(prev))
-              }
-            />
-
-            {/* Tabletop Bottom Player 1 HUD */}
-            {isTabletopRotated && (
-              <PlayerHudCard
-                player={matchState.players.p1}
-                role={
-                  matchState.activeAttackerId === 'p1' ? 'attacker' : 'defender'
-                }
-                selectedElement={
-                  matchState.activeAttackerId === 'p1'
-                    ? matchState.selectedAttackElement
-                    : matchState.selectedDefenceElement
-                }
-                isUltimateSelected={
-                  matchState.activeAttackerId === 'p1' &&
-                  (matchState.selectedUseUltimate || armedUltimateDraft)
-                }
-                requiredWins={requiredWins}
-                compact
-              />
-            )}
-
-            {/* Active Turn Controls (Rotated 180° automatically when in Tabletop mode and Player 2 is acting!) */}
-            <div
-              className={`transition-transform duration-300 ${activeActorId ? 'rounded-xl ring-1 ring-amber-400/50' : ''} ${
-                isTabletopRotated && activeActorId === 'p2' ? 'rotate-180' : ''
-              }`}
-            >
-              {matchState.phase === 'SELECT_ATTACK_MAGIC' && (
-                <SpellSelector
-                  mode="attack"
-                  playerName={attacker.name}
-                  arcaneMeter={attacker.arcaneMeter}
-                  useUltimate={armedUltimateDraft}
-                  onToggleUltimate={setArmedUltimateDraft}
-                  disabled={attacker.isAI}
-                  onSelectElement={handleSelectAttack}
-                />
               )}
-
-              {matchState.phase === 'SELECT_DEFENCE_MAGIC' && (
-                <SpellSelector
-                  mode="defence"
-                  playerName={defender.name}
-                  arcaneMeter={defender.arcaneMeter}
-                  useUltimate={false}
-                  opposingAttackElement={matchState.selectedAttackElement}
-                  lockedElement={matchState.settings.defenceLockout ? defender.defenceLock : undefined}
-                  disabled={defender.isAI}
-                  onSelectElement={handleSelectDefence}
-                />
-              )}
-
-              {matchState.phase === 'ROLL_ATTACK_D20' &&
-                matchState.selectedAttackElement && (
-                  <DiceRoller
-                    diceMode={matchState.settings.diceMode}
-                    roleLabel={`Attack Roll (${
-                      matchState.selectedUseUltimate
-                        ? ELEMENT_SCHOOLS[matchState.selectedAttackElement]
-                            .ultimateName
-                        : ELEMENT_SCHOOLS[matchState.selectedAttackElement]
-                            .offensiveSpellName
-                    })`}
-                    playerName={attacker.name}
-                    accentHex={
-                      ELEMENT_SCHOOLS[matchState.selectedAttackElement]
-                        .primaryHex
-                    }
-                    modifier={currentMod.attackModifier}
-                    autoRollForAI={attacker.isAI}
-                    reducedMotion={matchState.settings.reducedMotion}
-                    onRollConfirmed={handleAttackRollConfirmed}
-                  />
-                )}
-
-              {matchState.phase === 'ROLL_DEFENCE_D20' &&
-                matchState.selectedDefenceElement && (
-                  <DiceRoller
-                    diceMode={matchState.settings.diceMode}
-                    roleLabel={`Defence Roll (${
-                      ELEMENT_SCHOOLS[matchState.selectedDefenceElement]
-                        .defensiveSpellName
-                    } vs Natural ${matchState.attackRollResult} Attack)`}
-                    playerName={defender.name}
-                    accentHex={
-                      ELEMENT_SCHOOLS[matchState.selectedDefenceElement]
-                        .primaryHex
-                    }
-                    modifier={currentMod.defenceModifier}
-                    autoRollForAI={defender.isAI}
-                    reducedMotion={matchState.settings.reducedMotion}
-                    onRollConfirmed={handleDefenceRollConfirmed}
-                  />
-                )}
             </div>
 
             {matchState.combatLog.length > 0 && (
