@@ -1,4 +1,4 @@
-import { ARCANE_METER_MAX } from './combatEngine';
+import { ARCANE_METER_MAX, getRequiredWinsForFormat } from './combatEngine';
 import { rollCryptographicD20 } from './dice';
 import { ELEMENT_ORDER, ELEMENT_SCHOOLS, hasDefensiveElementalAdvantage } from './elements';
 import { AIDifficulty, ElementSchool, MatchState, PlayerState } from './types';
@@ -34,6 +34,9 @@ export function chooseAIAttackDecision(
     }
   }
 
+  const isHumanOnMatchPoint =
+    humanPlayer.battlesWon + 1 >= getRequiredWinsForFormat(state.settings.format);
+
   // Decide Ultimate timing
   let useUltimate = false;
   if (canUltimate) {
@@ -43,13 +46,11 @@ export function chooseAIAttackDecision(
     } else if (difficulty === 'sorcerer') {
       // Sorcerer unleashes Ultimate unless human is already at critical low HP (<= 10 HP)
       // where saving 100 Arcane Energy for the next battle is smarter!
-      useUltimate = humanPlayer.hp > 10 || humanPlayer.battlesWon === state.settings.format - 1;
+      useUltimate = humanPlayer.hp > 10 || isHumanOnMatchPoint;
     } else {
       // Archmage tactical Ultimate management:
       // If human is very low HP (<= 12) and this is not the final match-point battle for human,
       // Archmage saves the full 100 Arcane Meter for the next battle!
-      const isHumanOnMatchPoint =
-        humanPlayer.battlesWon + 1 >= Math.ceil(state.settings.format / 2);
       if (humanPlayer.hp <= 12 && !isHumanOnMatchPoint) {
         useUltimate = false;
       } else {

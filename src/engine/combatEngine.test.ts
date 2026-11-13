@@ -421,15 +421,29 @@ export function runCombatEngineTestSuite(): TestCaseResult[] {
     soloMatch.players.p1
   );
   const aiDef = chooseAIDefenceElement('fire', 'archmage');
+  const sorcererMatch = createInitialMatchState(
+    { ...DEFAULT_SETTINGS, mode: 'solo', format: 3, aiDifficulty: 'sorcerer' },
+    'p2'
+  );
+  const chargedSorcerer = { ...sorcererMatch.players.p2, arcaneMeter: 100 };
+  const weakenedHuman = { ...sorcererMatch.players.p1, hp: 10 };
+  const savesBeforeMatchPoint = !chooseAIAttackDecision(
+    sorcererMatch, chargedSorcerer, weakenedHuman
+  ).useUltimate;
+  const spendsAtMatchPoint = chooseAIAttackDecision(
+    sorcererMatch, chargedSorcerer, { ...weakenedHuman, battlesWon: 1 }
+  ).useUltimate;
 
   assertTest(
     'ai-turn-progression',
     'AI Controller',
-    'AI controller selects valid elemental spells and defensive responses across difficulty tiers',
+    'AI selects valid spells and the Sorcerer spends a charged Ultimate at match point',
     typeof aiAtk.element === 'string' &&
       aiAtk.useUltimate === false &&
-      typeof aiDef === 'string',
-    `AI Attack: ${aiAtk.element}, AI Defence vs Fire: ${aiDef}`
+      typeof aiDef === 'string' &&
+      savesBeforeMatchPoint &&
+      spendsAtMatchPoint,
+    `Sorcerer saves before match point: ${savesBeforeMatchPoint}; spends at match point: ${spendsAtMatchPoint}`
   );
 
   return results;

@@ -8,7 +8,6 @@ import {
   Trophy,
 } from 'lucide-react';
 import { getRequiredWinsForFormat, getStartingPlayerForBattle } from '../engine/combatEngine';
-import { rollCryptographicD20 } from '../engine/dice';
 import { MatchState, PlayerId } from '../engine/types';
 import { DiceRoller } from './DiceRoller';
 
@@ -33,16 +32,6 @@ export const ArcaneClashOverlay: React.FC<ArcaneClashOverlayProps> = ({
     }
   }, [p1Roll, p2Roll, onSubmitClashRolls]);
 
-  // If P2 is AI and P1 has rolled, auto-roll for AI
-  useEffect(() => {
-    if (state.players.p2.isAI && p1Roll !== null && p2Roll === null) {
-      const timer = window.setTimeout(() => {
-        setP2Roll(rollCryptographicD20());
-      }, 450);
-      return () => window.clearTimeout(timer);
-    }
-  }, [state.players.p2.isAI, p1Roll, p2Roll]);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
       <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-amber-400/60 p-6 shadow-2xl">
@@ -60,6 +49,7 @@ export const ArcaneClashOverlay: React.FC<ArcaneClashOverlayProps> = ({
         <div className="space-y-4">
           {p1Roll === null ? (
             <DiceRoller
+              key="p1"
               diceMode={state.settings.diceMode}
               roleLabel="Arcane Clash Roll-Off"
               playerName={state.players.p1.name}
@@ -80,6 +70,7 @@ export const ArcaneClashOverlay: React.FC<ArcaneClashOverlayProps> = ({
 
           {p1Roll !== null && p2Roll === null && (
             <DiceRoller
+              key="p2"
               diceMode={state.settings.diceMode}
               roleLabel="Arcane Clash Roll-Off"
               playerName={state.players.p2.name}

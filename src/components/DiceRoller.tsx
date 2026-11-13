@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Dices, Hash, Sparkles } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Dices } from 'lucide-react';
 import { rollCryptographicD20 } from '../engine/dice';
 import { DiceMode } from '../engine/types';
 import { soundFX } from '../utils/sound';
@@ -31,6 +31,9 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
   const [displayValue, setDisplayValue] = useState<number>(20);
   const [finalResult, setFinalResult] = useState<number | null>(null);
 
+  const animationTimer = useRef<number | undefined>(undefined);
+  const confirmationTimer = useRef<number | undefined>(undefined);
+
   const triggerDigitalRoll = () => {
     if (disabled || isRolling || finalResult !== null) return;
 
@@ -41,7 +44,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
     if (reducedMotion) {
       setDisplayValue(predetermined);
       setFinalResult(predetermined);
-      setTimeout(() => {
+      confirmationTimer.current = window.setTimeout(() => {
         onRollConfirmed(predetermined);
       }, 280);
       return;
@@ -51,16 +54,16 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
     let ticks = 0;
     const totalTicks = 11;
 
-    const interval = window.setInterval(() => {
+    animationTimer.current = window.setInterval(() => {
       ticks += 1;
       if (ticks < totalTicks) {
         setDisplayValue(((ticks * 7 + predetermined) % 20) + 1);
       } else {
-        window.clearInterval(interval);
+        window.clearInterval(animationTimer.current);
         setDisplayValue(predetermined);
         setFinalResult(predetermined);
         setIsRolling(false);
-        window.setTimeout(() => {
+        confirmationTimer.current = window.setTimeout(() => {
           onRollConfirmed(predetermined);
         }, 420);
       }
@@ -71,6 +74,10 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
     setFinalResult(null);
     setIsRolling(false);
     setDisplayValue(20);
+    return () => {
+      window.clearInterval(animationTimer.current);
+      window.clearTimeout(confirmationTimer.current);
+    };
   }, [roleLabel, playerName]);
 
   useEffect(() => {
@@ -83,11 +90,11 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
   }, [autoRollForAI, disabled, isRolling, finalResult]);
 
   const handlePhysicalSelect = (val: number) => {
-    if (disabled || finalResult !== null) return;
+    if (disabled || isRolling || finalResult !== null) return;
     soundFX.playSelectMagic();
     setDisplayValue(val);
     setFinalResult(val);
-    window.setTimeout(() => {
+    confirmationTimer.current = window.setTimeout(() => {
       onRollConfirmed(val);
     }, 220);
   };
@@ -99,24 +106,15 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
     <div className="w-full rounded-xl bg-slate-900/90 border border-slate-800 p-4 shadow-lg">
       <div className="flex items-center justify-between gap-4 mb-3">
         <div>
-          <div className="text-xs text-slate-400">
-            <span>{playerName}</span>
-            <span className="mx-1.5" aria-hidden="true">·</span>
-            <span className="text-amber-300 font-medium">{roleLabel}</span>
-          </div>
-          <h4 className="text-base font-bold text-white tracking-tight">
-            {autoRollForAI
-              ? 'Opponent Casting D20...'
-              : diceMode === 'digital'
-              ? 'Cast Astral D20 Die'
-              : 'Enter Physical D20 Roll (1–20)'}
-          </h4>
+          <div className="text-xs text-slate-400">{playerName}</div>
+          {diceMode === 'physical' && !autoRollForAI && (
+            <h4 className="text-base font-bold text-white">Tap your roll</h4>
+          )}
         </div>
-
         {modifier !== 0 && (
-          <div className="text-xs font-mono text-emerald-300">
-            Elemental Mastery: {modifier > 0 ? `+${modifier}` : modifier} Effective Roll
-          </div>
+          <span aria-label={`Roll bonus: ${modifier}`} className="font-mono text-sm text-emerald-300">
+            +{modifier}
+          </span>
         )}
       </div>
 
@@ -177,33 +175,13 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                   : 'text-white'
               }`}
             >
-              {displayValue}
+              {isRolling || finalResult !== null ? displayValue : 'D20'}
             </span>
           </div>
 
           <div className="flex-1 w-full">
             {finalResult !== null ? (
-              <div className="p-3 rounded-lg bg-slate-950/90 border border-slate-800">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-white">
-                    Natural Roll: <span className="font-mono text-amber-300">{finalResult}</span>
-                  </span>
-                  {modifier !== 0 && (
-                    <span className="text-xs font-mono text-emerald-300">
-                      Effective Total: {finalResult + modifier}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {finalResult === 20
-                    ? 'NATURAL 20! Maximum critical resonance!'
-                    : finalResult === 1
-                    ? 'NATURAL 1! Critical instability!'
-                    : finalResult === 18 || finalResult === 19
-                    ? 'High resonance roll (18–19) — potential Arcane Clash!'
-                    : 'Resolving spell outcome...'}
-                </p>
-              </div>
+              <span role="status" className="sr-only">Rolled {finalResult}</span>
             ) : (
               <button
                 type="button"
@@ -214,10 +192,10 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 <Dices className="w-5 h-5" />
                 <span>
                   {autoRollForAI
-                    ? 'AI Rolling D20...'
+                    ? 'Rolling…'
                     : isRolling
-                    ? 'Rolling Astral D20...'
-                    : 'Roll Digital D20'}
+                    ? 'Rolling…'
+                    : 'Roll'}
                 </span>
               </button>
             )}
@@ -234,7 +212,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 <button
                   key={num}
                   type="button"
-                  disabled={disabled || finalResult !== null}
+                  disabled={disabled || isRolling || finalResult !== null}
                   onClick={() => handlePhysicalSelect(num)}
                   className={`h-11 rounded-lg font-mono text-sm font-bold transition-all flex items-center justify-center cursor-pointer ${
                     isSelected
@@ -250,16 +228,6 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                 </button>
               );
             })}
-          </div>
-          <div className="mt-2.5 flex items-center justify-between text-xs text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <Hash className="w-3.5 h-3.5 text-amber-400" />
-              Roll your physical tabletop D20 and tap the exact number rolled.
-            </span>
-            <span className="flex items-center gap-1 text-amber-300/90">
-              <Sparkles className="w-3.5 h-3.5" />
-              Identical combat engine rules
-            </span>
           </div>
         </div>
       )}

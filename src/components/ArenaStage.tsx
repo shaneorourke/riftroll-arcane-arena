@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { Sparkles, FastForward } from 'lucide-react';
+import { Sparkles, FastForward, Shield, CornerUpLeft, X } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
 import { ELEMENT_SCHOOLS } from '../engine/elements';
 import {
   ElementSchool,
@@ -13,6 +14,7 @@ interface ArenaStageProps {
   p1: PlayerState;
   p2: PlayerState;
   activeAttackerId: PlayerId;
+  activeActorId: PlayerId | null;
   selectedAttackElement: ElementSchool | null;
   selectedDefenceElement: ElementSchool | null;
   selectedUseUltimate: boolean;
@@ -33,18 +35,25 @@ interface Particle {
   decay: number;
 }
 
+const CAST_WINDUP_MS = 100;
+const IMPACT_MS = 350;
+const PARRY_REBOUND_MS = 220;
+
 export const ArenaStage: React.FC<ArenaStageProps> = ({
   p1,
   p2,
   activeAttackerId,
+  activeActorId,
   selectedAttackElement,
   selectedDefenceElement,
   selectedUseUltimate,
   isAnimatingExchange,
   pendingResolution,
-  reducedMotion,
+  reducedMotion: reduceArenaMotion,
   onSkipAnimation,
 }) => {
+  const prefersReducedMotion = useReducedMotion();
+  const reducedMotion = reduceArenaMotion || prefersReducedMotion === true;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Determine active aura colors for each mage
@@ -119,35 +128,12 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
       }
     };
 
-    if (isAnimatingExchange && pendingResolution && !reducedMotion) {
-      const atkCfg = ELEMENT_SCHOOLS[pendingResolution.attackElement];
-      const defCfg = ELEMENT_SCHOOLS[pendingResolution.defenceElement];
-      const impactX =
-        pendingResolution.attackerId === 'p1'
-          ? canvas.width * 0.72
-          : canvas.width * 0.28;
-      const impactY = canvas.height * 0.52;
-
-      const burstSize = pendingResolution.isUltimate
-        ? 75
-        : pendingResolution.attackTier === 'critical_strike'
-        ? 60
-        : pendingResolution.attackTier === 'weak'
-        ? 22
-        : 40;
-
-      spawnBurst(
-        impactX,
-        impactY,
-        atkCfg.primaryHex,
-        defCfg.primaryHex,
-        burstSize,
-        pendingResolution.isUltimate ? 1.6 : 1.1
-      );
-    }
+    const startedAt = performance.now();
+    let impactShown = false;
 
     const render = () => {
       frame += 1;
+      const elapsed = performance.now() - startedAt;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Draw subtle glowing astral floor grid / rune circle in center
@@ -185,6 +171,25 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
             : canvas.width * 0.27;
         const beamY = canvas.height * 0.48;
 
+        const fumbled = pendingResolution.defenceOutcome === 'attack_fumbled';
+        const parried = pendingResolution.defenceOutcome === 'parry';
+        const direction = Math.sign(toX - fromX);
+        const progress = reducedMotion ? 1 : Math.max(0, Math.min(1, (elapsed - CAST_WINDUP_MS) / (IMPACT_MS - CAST_WINDUP_MS)));
+        const atImpact = progress === 1;
+        const castEnd = fromX + (toX - fromX) * progress * (fumbled ? 0.12 : 1);
+
+        if (atImpact && !impactShown) {
+          impactShown = true;
+          spawnBurst(
+            fumbled ? castEnd : toX,
+            beamY,
+            atkCfg.primaryHex,
+            defCfg.primaryHex,
+            fumbled ? 10 : pendingResolution.isUltimate ? 75 : 40,
+            pendingResolution.isUltimate ? 1.6 : 1.1
+          );
+        }
+
         // Beam thickness scales with attack tier & ultimate
         const baseThickness =
           pendingResolution.defenceOutcome === 'attack_fumbled'
@@ -201,7 +206,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
             ? 9
             : 5;
 
-        if (pendingResolution.defenceOutcome !== 'attack_fumbled') {
+        if (progress > 0 && (!fumbled || elapsed < 520)) {
           ctx.save();
           const grad = ctx.createLinearGradient(fromX, beamY, toX, beamY);
           grad.addColorStop(0, atkCfg.primaryHex);
@@ -222,7 +227,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           const segments = 12;
           for (let s = 1; s <= segments; s++) {
             const t = s / segments;
-            const px = fromX + (toX - fromX) * t;
+            const px = fromX + (castEnd - fromX) * t;
             let pyOffset = 0;
             if (!reducedMotion && s < segments) {
               if (pendingResolution.attackElement === 'lightning') {
@@ -236,41 +241,61 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
             }
             ctx.lineTo(px, beamY + pyOffset);
           }
+          ctx.globalAlpha = reducedMotion ? 1 : Math.max(0.12, 1 - Math.max(0, elapsed - IMPACT_MS) / 400);
           ctx.stroke();
           ctx.restore();
         }
 
-        // Draw Defender's Elemental Barrier at `toX`
-        ctx.save();
-        ctx.translate(toX, beamY);
-        ctx.strokeStyle =
-          pendingResolution.defenceOutcome === 'parry'
-            ? '#FBBF24'
-            : defCfg.primaryHex;
-        ctx.fillStyle = `${defCfg.primaryHex}33`;
-        ctx.lineWidth =
-          pendingResolution.defenceOutcome === 'parry'
-            ? 6
-            : pendingResolution.defenceOutcome === 'perfect_block'
-            ? 4.5
-            : 2.5;
-        ctx.shadowColor = defCfg.primaryHex;
-        ctx.shadowBlur = 22;
+        if (parried && atImpact) {
+          const rebound = reducedMotion ? 0.7 : Math.min(1, (elapsed - IMPACT_MS) / PARRY_REBOUND_MS);
+          const sparkX = toX + (fromX - toX) * rebound;
+          if (reducedMotion || elapsed < 700) {
+            ctx.save();
+            ctx.strokeStyle = '#FBBF24';
+            ctx.shadowColor = '#FBBF24';
+            ctx.shadowBlur = 14;
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(sparkX + 46 * direction, beamY + 10);
+            ctx.lineTo(sparkX + 18 * direction, beamY + 5);
+            ctx.lineTo(sparkX, beamY - 4);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
 
-        ctx.beginPath();
-        const shieldRadius =
-          pendingResolution.defenceOutcome === 'parry' ? 48 : 38;
-        const startAngle =
-          pendingResolution.attackerId === 'p1'
-            ? Math.PI * 0.65
-            : -Math.PI * 0.35;
-        const endAngle =
-          pendingResolution.attackerId === 'p1'
-            ? Math.PI * 1.35
-            : Math.PI * 0.35;
-        ctx.arc(0, 0, shieldRadius, startAngle, endAngle);
-        ctx.stroke();
-        ctx.restore();
+        // Draw Defender's Elemental Barrier at `toX`
+        if (!fumbled && (reducedMotion || elapsed >= 240)) {
+          ctx.save();
+          ctx.translate(toX, beamY);
+          ctx.strokeStyle =
+            pendingResolution.defenceOutcome === 'parry'
+              ? '#FBBF24'
+              : defCfg.primaryHex;
+          ctx.lineWidth =
+            pendingResolution.defenceOutcome === 'parry'
+              ? 6
+              : pendingResolution.defenceOutcome === 'perfect_block'
+              ? 4.5
+              : 2.5;
+          ctx.shadowColor = defCfg.primaryHex;
+          ctx.shadowBlur = 22;
+
+          ctx.beginPath();
+          const shieldRadius =
+            pendingResolution.defenceOutcome === 'parry' ? 48 : 38;
+          const startAngle =
+            pendingResolution.attackerId === 'p1'
+              ? Math.PI * 0.65
+              : -Math.PI * 0.35;
+          const endAngle =
+            pendingResolution.attackerId === 'p1'
+              ? Math.PI * 1.35
+              : Math.PI * 0.35;
+          ctx.arc(0, 0, shieldRadius, startAngle, endAngle);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
 
       // Update & draw particles
@@ -321,6 +346,29 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
     reducedMotion,
   ]);
 
+  const resolution = isAnimatingExchange ? pendingResolution : null;
+  const outcome = resolution?.defenceOutcome;
+  const ImpactIcon = outcome === 'parry' ? CornerUpLeft
+    : outcome === 'attack_fumbled' ? X
+    : outcome === 'perfect_block' || outcome === 'half_damage' ? Shield
+    : null;
+  const impactPlayer = resolution && (
+    outcome === 'parry' || outcome === 'attack_fumbled'
+      ? resolution.attackerId
+      : resolution.defenderId
+  );
+  const damage = outcome === 'parry' ? resolution?.counterDamageToAttacker : resolution?.damageToDefender;
+  const impactBadge = resolution && (
+    <div
+      aria-hidden="true"
+      className={`absolute -bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1 whitespace-nowrap rounded-full border border-slate-600 bg-slate-950 px-2 py-0.5 text-base font-black ${damage ? 'text-rose-200' : 'text-sky-200'} ${reducedMotion ? '' : 'animate-impact-cue'}`}
+      style={{ animationDelay: `${IMPACT_MS + (outcome === 'parry' ? PARRY_REBOUND_MS : 0)}ms` }}
+    >
+      {ImpactIcon && <ImpactIcon className="size-4" />}
+      {damage ? `−${damage}` : outcome === 'attack_fumbled' ? 'Miss' : 'Block'}
+    </div>
+  );
+
   return (
     <div
       className={`relative w-full h-64 sm:h-76 rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-[#131026] via-[#0d0b1a] to-[#080711] shadow-2xl ${
@@ -331,22 +379,24 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           : ''
       }`}
     >
+      <div role="status" className="sr-only">{resolution?.summaryText}</div>
       {/* Interactive Canvas Particle & Spell Beam Layer */}
       <canvas
         ref={canvasRef}
+        aria-hidden="true"
         width={960}
         height={320}
         className="absolute inset-0 w-full h-full pointer-events-none"
       />
 
       {/* Top Arena Status Banner */}
-      <div className="relative z-10 flex items-center justify-between px-4 pt-3 text-xs text-slate-300">
+      <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-3 text-xs text-slate-300">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-amber-300">
-            {activeAttackerId === 'p1' ? p1.name : p2.name}
-          </span>
-          <span aria-hidden="true">·</span>
-          <span>Attacking</span>
+          {activeActorId && (
+            <span className="font-semibold text-amber-300">
+              {activeActorId === 'p1' ? p1.name : p2.name}’s turn
+            </span>
+          )}
           {selectedUseUltimate && (
             <>
               <span aria-hidden="true">·</span>
@@ -366,15 +416,15 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
             className="px-3 py-1 rounded-md bg-slate-900/90 hover:bg-slate-800 text-xs font-medium text-slate-200 border border-slate-700 flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
           >
             <FastForward className="w-3.5 h-3.5 text-amber-400" />
-            <span>Skip Animation</span>
+            <span>Skip</span>
           </button>
         )}
       </div>
 
       {/* Two Facing Stylized Mages */}
-      <div className="relative z-10 flex items-center justify-between h-full px-6 sm:px-14 pb-8">
+      <div className="relative z-10 flex h-full items-center justify-between px-3 pt-5 sm:px-14">
         {/* Left Mage: Player 1 */}
-        <div className="flex flex-col items-center">
+        <div className="relative flex min-w-0 flex-col items-center">
           {p1Element && (
             <div
               className="mb-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950/85 border border-slate-700/80 text-xs font-semibold text-white shadow"
@@ -451,29 +501,17 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
               />
             </svg>
           </div>
-          <span className="text-xs font-semibold text-slate-200 mt-1">
+          <span className="mt-1 max-w-full truncate text-xs font-semibold text-slate-200">
             {p1.name}
           </span>
+          {activeActorId === 'p1' && (
+            <span aria-hidden="true" className="absolute -bottom-3 h-1 w-12 rounded-full bg-amber-300 shadow-[0_0_12px_#fcd34d]" />
+          )}
+          {impactPlayer === 'p1' && impactBadge}
         </div>
 
-        {/* Center Exchange Callout Overlay during Animation */}
-        {isAnimatingExchange && pendingResolution && (
-          <div className="max-w-xs sm:max-w-md text-center px-4 py-3 rounded-xl bg-slate-950/90 border border-amber-500/50 shadow-2xl backdrop-blur-md">
-            <div className="text-xs font-mono text-amber-300 mb-1">
-              ATK {pendingResolution.effectiveAttackRoll} vs DEF{' '}
-              {pendingResolution.effectiveDefenceRoll}
-            </div>
-            <p className="text-sm sm:text-base font-bold text-white leading-snug">
-              {pendingResolution.summaryText}
-            </p>
-            <p className="text-xs text-slate-300 mt-1">
-              {pendingResolution.detailText}
-            </p>
-          </div>
-        )}
-
         {/* Right Mage: Player 2 */}
-        <div className="flex flex-col items-center">
+        <div className="relative flex min-w-0 flex-col items-center">
           {p2Element && (
             <div
               className="mb-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950/85 border border-slate-700/80 text-xs font-semibold text-white shadow"
@@ -546,9 +584,13 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
               />
             </svg>
           </div>
-          <span className="text-xs font-semibold text-slate-200 mt-1">
+          <span className="mt-1 max-w-full truncate text-xs font-semibold text-slate-200">
             {p2.name}
           </span>
+          {activeActorId === 'p2' && (
+            <span aria-hidden="true" className="absolute -bottom-3 h-1 w-12 rounded-full bg-amber-300 shadow-[0_0_12px_#fcd34d]" />
+          )}
+          {impactPlayer === 'p2' && impactBadge}
         </div>
       </div>
     </div>

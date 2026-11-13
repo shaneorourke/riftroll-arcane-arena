@@ -238,12 +238,12 @@ export default function App() {
     matchState.settings.mode === 'local' &&
     matchState.settings.localLayout === 'tabletop';
 
-  // Helper to check if current interactive control belongs to Player 2 (for 180-degree tabletop mode)
-  const activeActorId: PlayerId =
-    matchState.phase === 'SELECT_ATTACK_MAGIC' ||
-    matchState.phase === 'ROLL_ATTACK_D20'
+  const activeActorId =
+    matchState.phase === 'SELECT_ATTACK_MAGIC' || matchState.phase === 'ROLL_ATTACK_D20'
       ? attackerId
-      : defenderId;
+      : matchState.phase === 'SELECT_DEFENCE_MAGIC' || matchState.phase === 'ROLL_DEFENCE_D20'
+      ? defenderId
+      : null;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#090812] text-slate-100">
@@ -795,6 +795,7 @@ export default function App() {
               p1={matchState.players.p1}
               p2={matchState.players.p2}
               activeAttackerId={matchState.activeAttackerId}
+              activeActorId={activeActorId}
               selectedAttackElement={matchState.selectedAttackElement}
               selectedDefenceElement={matchState.selectedDefenceElement}
               selectedUseUltimate={
@@ -831,7 +832,7 @@ export default function App() {
 
             {/* Active Turn Controls (Rotated 180° automatically when in Tabletop mode and Player 2 is acting!) */}
             <div
-              className={`transition-transform duration-300 ${
+              className={`transition-transform duration-300 ${activeActorId ? 'rounded-xl ring-1 ring-amber-400/50' : ''} ${
                 isTabletopRotated && activeActorId === 'p2' ? 'rotate-180' : ''
               }`}
             >
@@ -903,24 +904,12 @@ export default function App() {
                 )}
             </div>
 
-            {/* Recent Combat Chronicle / Log */}
-            <div className="rounded-xl bg-slate-900/80 border border-slate-800 p-4">
-              <div className="flex items-center justify-between mb-2.5">
-                <h4 className="text-xs font-bold text-slate-300">
-                  Recent Combat Chronicle
-                </h4>
-                <span className="text-xs text-slate-500">
-                  {matchState.combatLog.length} Exchanges Resolved
-                </span>
-              </div>
-
-              {matchState.combatLog.length === 0 ? (
-                <p className="text-xs text-slate-500">
-                  Select an attacking school of magic to begin Battle{' '}
-                  {matchState.battleNumber}.
-                </p>
-              ) : (
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+            {matchState.combatLog.length > 0 && (
+              <details className="rounded-xl bg-slate-900/80 border border-slate-800 p-4">
+                <summary className="cursor-pointer text-xs font-bold text-slate-300">
+                  Combat log
+                </summary>
+                <div className="mt-3 space-y-2 max-h-40 overflow-y-auto pr-1">
                   {matchState.combatLog.slice(0, 6).map((entry) => (
                     <div
                       key={entry.id}
@@ -944,8 +933,8 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </details>
+            )}
 
             {/* Special Event & Battle Over Modals */}
             {matchState.phase === 'ARCANE_CLASH_ROLL' && (

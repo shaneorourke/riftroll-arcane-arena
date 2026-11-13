@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Shield, Sparkles } from 'lucide-react';
+import { Swords, Shield, Sparkles } from 'lucide-react';
 import { ARCANE_METER_MAX } from '../engine/combatEngine';
 import {
   ELEMENT_ORDER,
@@ -36,19 +36,10 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
     <div className="w-full rounded-xl bg-slate-900/90 border border-slate-800 p-4 shadow-lg">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
         <div>
-          <div className="text-xs text-slate-400">
-            <span>{playerName}</span>
-            <span className="mx-1.5" aria-hidden="true">·</span>
-            <span className={mode === 'attack' ? 'text-amber-300 font-medium' : 'text-sky-300 font-medium'}>
-              {mode === 'attack' ? 'Attacker Phase' : 'Defender Phase'}
-            </span>
-          </div>
-          <h3 className="text-base font-bold text-white tracking-tight">
-            {mode === 'attack'
-              ? 'Choose Attacking Magic School'
-              : `Choose Defensive Ward vs ${
-                  opposingAttackElement ? ELEMENT_SCHOOLS[opposingAttackElement].name : 'Attack'
-                }`}
+          <div className="text-xs text-slate-400">{playerName}</div>
+          <h3 className="flex items-center gap-2 text-base font-bold text-white">
+            {mode === 'attack' ? <Swords className="size-4" /> : <Shield className="size-4" />}
+            {disabled ? 'Choosing…' : mode === 'attack' ? 'Pick a spell' : 'Pick a shield'}
           </h3>
         </div>
 
@@ -56,6 +47,7 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
         {canUnleashUltimate && onToggleUltimate && (
           <button
             type="button"
+            aria-pressed={useUltimate}
             onClick={() => onToggleUltimate(!useUltimate)}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0 ${
               useUltimate
@@ -64,17 +56,13 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>
-              {useUltimate
-                ? 'ULTIMATE ARMED (+15 Base DMG · -100 Arcane)'
-                : 'Unleash Ultimate (100 Arcane Ready)'}
-            </span>
+            <span>Ultimate</span>
           </button>
         )}
       </div>
 
       {/* 8 Elemental Schools Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {ELEMENT_ORDER.map((el) => {
           const school = ELEMENT_SCHOOLS[el];
           const isStrongCounter =
@@ -90,12 +78,8 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
             !isStrongCounter &&
             hasDefensiveElementalAdvantage(el, opposingAttackElement);
 
-          const spellDisplayName =
-            mode === 'attack'
-              ? useUltimate
-                ? school.ultimateName
-                : school.offensiveSpellName
-              : school.defensiveSpellName;
+          const label = el === 'dark' ? 'Dark' : el === 'light' ? 'Light' : school.name;
+          const advantage = isStrongCounter ? '+2' : isWeakChoice ? '−2' : null;
 
           return (
             <button
@@ -103,7 +87,8 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
               type="button"
               disabled={disabled}
               onClick={() => onSelectElement(el)}
-              className={`group relative text-left p-2.5 rounded-lg border transition-all cursor-pointer disabled:opacity-50 ${
+              aria-label={advantage ? `${label}, ${isStrongCounter ? "defence bonus" : "opponent attack bonus"}` : label}
+              className={`relative flex min-h-18 flex-col items-center justify-center gap-1 rounded-lg border p-1 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-white disabled:opacity-50 ${
                 useUltimate && mode === 'attack'
                   ? 'bg-amber-950/40 border-amber-400/70 hover:bg-amber-900/50'
                   : isStrongCounter
@@ -111,49 +96,15 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
                   : `${school.bgTintClass} ${school.borderClass} hover:brightness-125`
               }`}
             >
-              <div className="flex items-center justify-between gap-1.5 mb-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span style={{ color: school.primaryHex }} className="shrink-0">
-                    <ElementIcon element={el} className="w-4 h-4" />
-                  </span>
-                  <span className="text-xs font-bold text-white truncate">
-                    {school.name}
-                  </span>
-                </div>
-
-                {isStrongCounter && (
-                  <span className="text-[11px] font-mono font-bold text-emerald-300 shrink-0">
-                    +2 DEF
-                  </span>
-                )}
-                {isWeakChoice && (
-                  <span className="text-[11px] font-mono text-rose-300 shrink-0">
-                    -2 Match
-                  </span>
-                )}
-              </div>
-
-              <div className="text-xs font-medium text-slate-200 truncate">
-                {spellDisplayName}
-              </div>
-
-              <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 truncate">
-                {mode === 'attack' ? (
-                  <>
-                    <Flame className="w-3 h-3 text-slate-500 shrink-0" />
-                    <span className="truncate">
-                      Counters {ELEMENT_SCHOOLS[school.defendsStronglyAgainst].name}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Shield className="w-3 h-3 text-slate-500 shrink-0" />
-                    <span className="truncate">
-                      Wards vs {ELEMENT_SCHOOLS[school.defendsStronglyAgainst].name} (+2)
-                    </span>
-                  </>
-                )}
-              </div>
+              <span style={{ color: school.primaryHex }} aria-hidden="true">
+                <ElementIcon element={el} className="size-7 sm:size-9" />
+              </span>
+              <span className="text-xs font-bold text-white">{label}</span>
+              {advantage && (
+                <span aria-hidden="true" className={`absolute right-1 top-1 text-[10px] font-bold ${isStrongCounter ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {advantage}
+                </span>
+              )}
             </button>
           );
         })}
