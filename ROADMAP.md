@@ -34,11 +34,10 @@ Choose a spell → roll → watch the hit → see what changed.
 
 ## Later milestones
 
-### Server-authoritative online multiplayer
-- Provision Firebase Authentication and Firestore alongside Cloud Functions (or an Express + WebSocket Cloud Run backend).
-- Implement `FirebaseMultiplayerAdapter` conforming to `src/multiplayer/transport.ts`.
-- Move `rollCryptographicD20()` and `resolveCombatExchange()` execution into a server-authoritative endpoint so clients only submit spell selection intents and roll requests.
-- Enable 2–4 player private rooms (`RIFT-XXXX` codes) with King-of-the-Hill / Winner-Stays rotation for players 3 and 4.
+### Private online guest duels
+- The local prototype supports two guests, invite links and room codes, server-controlled dice, and returning to the same seat after a refresh.
+- Deploy the game and room server together over HTTPS, then test a full best-of-three on separate devices, including a reconnect.
+- Bring the local exchange animations to online duels and add room persistence across server restarts before a wider release.
 
 ### Expanded grimoire and named spells
 - Expand each of the 8 elemental schools from 1 offensive / 1 defensive / 1 ultimate spell to a customizable 3-spell loadout per school.
@@ -49,4 +48,4 @@ Choose a spell → roll → watch the hit → see what changed.
 - Expand the HTML5 Canvas particle arena with custom GLSL post-processing shaders for Ultimate finishers.
 
 ## Known Limitations in MVP
-- **Online Multiplayer**: Intentionally disabled in the local sandbox per specification so online play is never faked; local 2-player (tabletop and side-by-side) and Solo AI modes operate offline with zero external dependencies.
+- **Online Multiplayer** works with the local room server. Internet play needs a deployed server. Solo and local modes can be played offline.

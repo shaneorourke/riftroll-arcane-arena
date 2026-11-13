@@ -1,3 +1,4 @@
+import { OnlineDuel } from './components/OnlineDuel';
 import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import {
@@ -22,7 +23,6 @@ import { DiceRoller } from './components/DiceRoller';
 import { ElementIcon } from './components/ElementIcon';
 import {
   HowToPlayAndTestsPanel,
-  OnlineLobbyPreviewPanel,
 } from './components/InfoPanels';
 import { PlayerHudCard } from './components/PlayerHudCard';
 import { SpellSelector } from './components/SpellSelector';
@@ -63,7 +63,7 @@ import { soundFX } from './utils/sound';
 type ScreenView = 'MENU' | 'BATTLE' | 'ONLINE_LOBBY' | 'SETTINGS' | 'HOW_TO_PLAY';
 
 export default function App() {
-  const [view, setView] = useState<ScreenView>('MENU');
+  const [view, setView] = useState<ScreenView>(() => new URLSearchParams(location.search).has('room') ? 'ONLINE_LOBBY' : 'MENU');
   const [hasStartedMatch, setHasStartedMatch] = useState(false);
 
   const [settings, setSettings] = useState<MatchSettings>({
@@ -425,12 +425,12 @@ export default function App() {
                     <div className="flex items-center justify-between mb-1.5">
                       <Sparkles className="w-5 h-5 text-violet-400" />
                       <span className="text-[11px] font-mono text-slate-400">
-                        2–4 ROOMS
+                        2 PLAYERS
                       </span>
                     </div>
                     <div className="text-base font-bold">Online Rooms</div>
                     <div className="text-xs text-slate-400 mt-0.5">
-                      Private room architecture & roadmap
+                      Invite a friend with a room code
                     </div>
                   </button>
                 </div>
@@ -1058,10 +1058,7 @@ export default function App() {
         )}
 
         {view === 'ONLINE_LOBBY' && (
-          <OnlineLobbyPreviewPanel
-            onClose={() => setView('MENU')}
-            onPlayLocalInstead={() => launchNewMatch({ mode: 'local' })}
-          />
+          <OnlineDuel onClose={() => setView('MENU')} reducedMotion={settings.reducedMotion} />
         )}
 
         {view === 'HOW_TO_PLAY' && (

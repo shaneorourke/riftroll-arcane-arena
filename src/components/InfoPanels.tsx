@@ -2,14 +2,10 @@ import React, { useState } from 'react';
 import {
   BookOpen,
   CheckCircle2,
-  Copy,
   Flame,
-  Lock,
-  Server,
   Shield,
   Sparkles,
   Swords,
-  Users,
   XCircle,
 } from 'lucide-react';
 import { runCombatEngineTestSuite, TestCaseResult } from '../engine/combatEngine.test';
@@ -295,141 +291,6 @@ export const HowToPlayAndTestsPanel: React.FC<{ onClose: () => void }> = ({
           </div>
         </div>
       )}
-    </div>
-  );
-};
-
-export const OnlineLobbyPreviewPanel: React.FC<{
-  onClose: () => void;
-  onPlayLocalInstead: () => void;
-}> = ({ onClose, onPlayLocalInstead }) => {
-  const [copied, setCopied] = useState(false);
-  const sampleRoomCode = 'RIFT-8492';
-
-  const copyCode = () => {
-    navigator.clipboard?.writeText(sampleRoomCode).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
-  };
-
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <div>
-          <div className="text-xs text-amber-300 mb-1">
-            <span>Online Private Rooms (2–4 Players)</span>
-            <span className="mx-1.5" aria-hidden="true">·</span>
-            <span>Firebase Architecture Foundation</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-white">
-            Online Multiplayer Lobby & Server-Authoritative Architecture
-          </h2>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="px-4 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0"
-        >
-          Back to Menu
-        </button>
-      </div>
-
-      {/* Honest Unconfigured Status Banner (Section 9 Requirement) */}
-      <div className="p-5 rounded-xl bg-amber-950/30 border border-amber-500/50 mb-6">
-        <div className="flex items-start gap-3">
-          <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-sm font-bold text-white">
-              Online Transport Disabled in Local Sandbox (No Fake Multiplayer)
-            </h3>
-            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-              Per Section 9 architectural guidelines, online multiplayer is transparently marked offline until a Firebase project and server-authoritative Cloud Function roll endpoint are connected. Solo vs AI and Local 2-Player modes are 100% playable right now without Firebase.
-            </p>
-            <div className="mt-3">
-              <button
-                type="button"
-                onClick={onPlayLocalInstead}
-                className="px-4 py-2 rounded-lg text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 transition-colors cursor-pointer"
-              >
-                Launch Local 2-Player Arena Now
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Private Room UI Preview */}
-        <div className="p-5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Users className="w-4 h-4 text-sky-400" />
-              <span>Private Room Interface (2–4 Players)</span>
-            </h3>
-            <span className="text-xs font-mono text-slate-400">OFFLINE PREVIEW</span>
-          </div>
-
-          <div className="p-3.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between">
-            <div>
-              <div className="text-xs text-slate-400">Room Invite Code</div>
-              <div className="font-mono text-lg font-bold text-amber-300">
-                {sampleRoomCode}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={copyCode}
-              className="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 flex items-center gap-1.5 cursor-pointer"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span>{copied ? 'Copied' : 'Copy Code'}</span>
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            <div className="text-xs text-slate-400">Room Slots (2 Active Duelists + 2 Arena Challengers)</div>
-            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-white font-medium">1. Host Mage (Duelist P1)</span>
-              <span className="text-amber-300 font-mono">Waiting for Firebase</span>
-            </div>
-            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-slate-400">2. Challenger Slot (Duelist P2)</span>
-              <span className="text-slate-500 font-mono">Open Slot</span>
-            </div>
-            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-slate-400">3. Spectator / Next Winner-Stays Slot</span>
-              <span className="text-slate-500 font-mono">Open Slot</span>
-            </div>
-            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-slate-400">4. Spectator / Next Winner-Stays Slot</span>
-              <span className="text-slate-500 font-mono">Open Slot</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Server-Authoritative Integration Plan */}
-        <div className="p-5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Server className="w-4 h-4 text-emerald-400" />
-            <span>Server-Authoritative Security Plan</span>
-          </h3>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            The engine in <code className="text-amber-300 font-mono">src/engine/combatEngine.ts</code> is 100% pure TypeScript with zero DOM or React dependencies so it runs identically inside Firebase Cloud Functions or a Node.js server:
-          </p>
-          <ol className="text-xs text-slate-300 space-y-2 list-decimal list-inside leading-relaxed">
-            <li>
-              <strong className="text-white">Intent-Only Client Writes:</strong> Clients only submit <code className="font-mono text-sky-300">SELECT_ATTACK</code>, <code className="font-mono text-sky-300">SELECT_DEFENCE</code>, and <code className="font-mono text-sky-300">REQUEST_SERVER_D20_ROLL</code> intents via <code className="font-mono">MultiplayerTransport</code>.
-            </li>
-            <li>
-              <strong className="text-white">Server Cryptographic D20:</strong> The backend generates the unbiased D20 roll using Node <code className="font-mono">crypto.randomInt(1, 21)</code> and runs <code className="font-mono">resolveCombatExchange()</code> server-side.
-            </li>
-            <li>
-              <strong className="text-white">Immutable State Sync:</strong> Clients subscribe to <code className="font-mono">rooms/&#123;roomCode&#125;/matchState</code> with Firestore Security Rules blocking direct client writes to HP, Arcane Meter, or dice results.
-            </li>
-          </ol>
-        </div>
-      </div>
     </div>
   );
 };

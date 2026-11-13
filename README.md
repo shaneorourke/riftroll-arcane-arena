@@ -2,6 +2,15 @@
 
 **RIFTROLL: Arcane Arena** is a fast-paced magical arena battler in which powerful mages duel using all eight schools of elemental magic and D20 dice. Every mage can wield all eight schools of magic on any turn, combining fighting-game mind games with dramatic tabletop D20 rolls.
 
+
+## Private guest duels
+
+Run `npm run dev`, then open **Online Rooms → Host a duel**. Share the invite link or room code and open it in a second browser profile or on another device that can reach the same server. A tab can reclaim its seat after a refresh. The server owns dice and turn validation.
+
+For a built copy, run `npm run build` and `npm start`. The server listens on localhost port 3002 by default. Set `PORT` and `RIFTROLL_HOST` to match your host. For phone testing on the same network, run Vite with a reachable LAN address and open that address on both devices.
+
+Rooms live in memory on one server process and expire an hour after creation. Restarting the server clears them. Internet play requires deploying this server and serving the game over HTTPS.
+
 ---
 
 ## 1. Quick Start & Commands
