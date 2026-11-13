@@ -16,6 +16,7 @@ interface ArenaStageProps {
   p2: PlayerState;
   activeAttackerId: PlayerId;
   activeActorId: PlayerId | null;
+  tabletop?: boolean;
   selectedAttackElement: ElementSchool | null;
   selectedDefenceElement: ElementSchool | null;
   selectedUseUltimate: boolean;
@@ -40,11 +41,30 @@ const CAST_WINDUP_MS = 100;
 const IMPACT_MS = 350;
 const PARRY_REBOUND_MS = 220;
 
+function CastingCircle({ element, color, active }: {
+  element: ElementSchool | null;
+  color: string;
+  active: boolean;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`relative grid size-19 place-items-center rounded-full border-2 sm:size-23 ${active ? 'opacity-100' : 'opacity-75'}`}
+      style={{ color, borderColor: color, boxShadow: `0 0 22px ${color}77, inset 0 0 24px ${color}44`, background: `radial-gradient(circle, ${color}55, #100a20 70%)` }}
+    >
+      <span className="absolute inset-2 rotate-45 rounded-xl border border-current opacity-60" />
+      <span className="absolute inset-3 rounded-full border border-dashed border-current opacity-70" />
+      {element ? <ElementIcon element={element} className="size-8" /> : <Sparkles className="size-7" />}
+    </div>
+  );
+}
+
 export const ArenaStage: React.FC<ArenaStageProps> = ({
   p1,
   p2,
   activeAttackerId,
   activeActorId,
+  tabletop = false,
   selectedAttackElement,
   selectedDefenceElement,
   selectedUseUltimate,
@@ -394,7 +414,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
   const impactBadge = resolution && (
     <div
       aria-hidden="true"
-      className={`absolute -bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1 whitespace-nowrap rounded-full border border-slate-600 bg-slate-950 px-2 py-0.5 text-base font-black ${damage ? 'text-rose-200' : 'text-sky-200'} ${reducedMotion ? '' : 'animate-impact-cue'}`}
+      className={`absolute -bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-1 whitespace-nowrap rounded-full border border-slate-600 bg-slate-950 px-2 py-0.5 text-base font-black ${damage ? 'text-rose-200' : 'text-sky-200'} ${reducedMotion ? '' : 'animate-impact-cue'}`}
       style={{ animationDelay: `${IMPACT_MS + (outcome === 'parry' ? PARRY_REBOUND_MS : 0)}ms` }}
     >
       {ImpactIcon && <ImpactIcon className="size-4" />}
@@ -428,7 +448,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
         <div className="flex items-center gap-2">
           {activeActorId && (
             <span className="font-semibold text-amber-300">
-              {activeActorId === 'p1' ? p1.name : p2.name}’s turn
+              {activeActorId === 'p1' && p2.isAI ? 'Your turn' : `${activeActorId === 'p1' ? p1.name : p2.name}’s turn`}
             </span>
           )}
           {selectedUseUltimate && (
@@ -456,12 +476,12 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
       </div>
 
       {/* Two Facing Stylized Mages */}
-      <div className="relative z-10 flex h-full items-center justify-between px-3 pt-5 sm:px-14">
+      <div className="relative z-10 h-full">
         {/* Left Mage: Player 1 */}
-        <div className="relative flex min-w-0 flex-col items-center">
+        <div className="absolute left-[22%] top-[48%] flex w-[40%] -translate-x-1/2 -translate-y-1/2 flex-col items-center">
           {p1Element && (
             <div
-              className="mb-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950/85 border border-slate-700/80 text-xs font-semibold text-white shadow"
+              className="absolute bottom-[calc(100%-12px)] flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950/85 border border-slate-700/80 text-xs font-semibold text-white shadow"
               style={{ borderColor: p1AuraHex }}
             >
               <span style={{ color: p1AuraHex }}>
@@ -472,83 +492,29 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           )}
 
           <div
-            className={`relative w-24 h-28 sm:w-28 sm:h-32 flex items-center justify-center ${
+            className={`relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center ${
               reducedMotion ? '' : 'animate-float-slow'
             }`}
             style={{
               filter: `drop-shadow(0 0 18px ${p1AuraHex}66)`,
             }}
           >
-            {/* Stylized Astral Battlemage SVG (Player 1 Facing Right) */}
-            <svg viewBox="0 0 120 140" className="w-full h-full">
-              {/* Arcane Halo behind Mage */}
-              <circle
-                cx="55"
-                cy="65"
-                r="42"
-                fill="none"
-                stroke={p1AuraHex}
-                strokeWidth="1.5"
-                strokeDasharray="6 4"
-                opacity="0.55"
-              />
-              {/* Flowing Cloak */}
-              <path
-                d="M30,55 L18,125 L75,125 L68,55 Z"
-                fill="#1E1B4B"
-                stroke={p1AuraHex}
-                strokeWidth="2"
-              />
-              {/* Shoulder Pauldrons */}
-              <path
-                d="M25,56 Q52,44 76,58 L70,74 L30,72 Z"
-                fill="#312E81"
-                stroke="#F59E0B"
-                strokeWidth="2"
-              />
-              {/* Hooded Head & Glowing Eyes */}
-              <path
-                d="M36,24 Q55,14 68,32 L64,54 L38,54 Z"
-                fill="#0F172A"
-                stroke={p1AuraHex}
-                strokeWidth="2"
-              />
-              <circle cx="58" cy="40" r="3" fill="#FDE68A" />
-              {/* Grand Battlestaff Held Forward */}
-              <line
-                x1="84"
-                y1="16"
-                x2="76"
-                y2="132"
-                stroke="#D97706"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              {/* Staff Crystal Orb */}
-              <circle
-                cx="85"
-                cy="20"
-                r="9"
-                fill={p1AuraHex}
-                stroke="#FEF08A"
-                strokeWidth="2"
-              />
-            </svg>
+            <CastingCircle element={p1Element} color={p1AuraHex} active={activeActorId === 'p1'} />
           </div>
-          <span className="mt-1 max-w-full truncate text-xs font-semibold text-slate-200">
-            {p1.name}
+          <span className="absolute top-full mt-1 max-w-full truncate text-xs font-semibold text-slate-200">
+            {p2.isAI ? 'You' : p1.name}
           </span>
           {activeActorId === 'p1' && (
-            <span aria-hidden="true" className="absolute -bottom-3 h-1 w-12 rounded-full bg-amber-300 shadow-[0_0_12px_#fcd34d]" />
+            <span aria-hidden="true" className="absolute -bottom-6 h-1 w-12 rounded-full bg-amber-300 shadow-[0_0_12px_#fcd34d]" />
           )}
           {impactPlayer === 'p1' && impactBadge}
         </div>
 
         {/* Right Mage: Player 2 */}
-        <div className="relative flex min-w-0 flex-col items-center">
+        <div className="absolute left-[78%] top-[48%] flex w-[40%] -translate-x-1/2 -translate-y-1/2 flex-col items-center">
           {p2Element && (
             <div
-              className="mb-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950/85 border border-slate-700/80 text-xs font-semibold text-white shadow"
+              className="absolute bottom-[calc(100%-12px)] flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-950/85 border border-slate-700/80 text-xs font-semibold text-white shadow"
               style={{ borderColor: p2AuraHex }}
             >
               <span style={{ color: p2AuraHex }}>
@@ -559,14 +525,14 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           )}
 
           <div
-            className={`relative w-24 h-28 sm:w-28 sm:h-32 flex items-center justify-center ${
+            className={`relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center ${
               reducedMotion ? '' : 'animate-float-slow'
             }`}
             style={{
               filter: `drop-shadow(0 0 18px ${p2AuraHex}66)`,
             }}
           >
-            {/* Stylized Obsidian Spire Magister SVG (Player 2 Facing Left) */}
+            {p2.isAI ? (
             <svg viewBox="0 0 120 140" className="w-full h-full">
               <circle
                 cx="65"
@@ -617,12 +583,15 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
                 strokeWidth="2"
               />
             </svg>
+            ) : (
+              <CastingCircle element={p2Element} color={p2AuraHex} active={activeActorId === 'p2'} />
+            )}
           </div>
-          <span className="mt-1 max-w-full truncate text-xs font-semibold text-slate-200">
+          <span className={`absolute top-full mt-1 max-w-full truncate text-xs font-semibold text-slate-200 ${tabletop ? "rotate-180" : ""}`}>
             {p2.name}
           </span>
           {activeActorId === 'p2' && (
-            <span aria-hidden="true" className="absolute -bottom-3 h-1 w-12 rounded-full bg-amber-300 shadow-[0_0_12px_#fcd34d]" />
+            <span aria-hidden="true" className="absolute -bottom-6 h-1 w-12 rounded-full bg-amber-300 shadow-[0_0_12px_#fcd34d]" />
           )}
           {impactPlayer === 'p2' && impactBadge}
         </div>

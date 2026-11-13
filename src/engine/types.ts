@@ -59,6 +59,7 @@ export interface PlayerState {
   arcaneMeter: number; // 0 to 100, persists across battles in the same match
   battlesWon: number;
   lastStandUsedThisBattle: boolean;
+  defenceLock?: ElementSchool;
   avatarColor: string;
 }
 
@@ -158,6 +159,7 @@ export interface MatchSettings {
   localLayout: LocalLayoutMode;
   reducedMotion: boolean;
   soundEnabled: boolean;
+  defenceLockout?: boolean;
 }
 
 export interface MatchState {

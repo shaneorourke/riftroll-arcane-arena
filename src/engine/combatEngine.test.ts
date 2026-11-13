@@ -446,5 +446,23 @@ export function runCombatEngineTestSuite(): TestCaseResult[] {
     `Sorcerer saves before match point: ${savesBeforeMatchPoint}; spends at match point: ${spendsAtMatchPoint}`
   );
 
+  const rechargeMatch = createInitialMatchState({ ...DEFAULT_SETTINGS, defenceLockout: true }, 'p1');
+  const firstCast = selectAttackMagic(rechargeMatch, 'ice', false);
+  const firstDefence = selectDefenceMagic(firstCast, 'ice');
+  const nextTurn = completeExchangeAnimation(submitDefenceRoll(submitAttackRoll(firstDefence, 4), 12));
+  const nextCast = selectAttackMagic(nextTurn, 'wind', false);
+  const blocked = selectDefenceMagic(nextCast, 'ice');
+  const accepted = selectDefenceMagic(nextCast, 'fire');
+  const aiAvoidsLock = Array.from({ length: 30 }, () => chooseAIDefenceElement('wind', 'archmage', 'ice')).every((element) => element !== 'ice');
+  assertTest(
+    'spell-recharge',
+    'Match Progression',
+    'An attack locks only its caster’s next defence, and the AI respects the lock',
+    firstDefence.phase === 'ROLL_ATTACK_D20' && blocked === nextCast &&
+      accepted.phase === 'ROLL_ATTACK_D20' && accepted.players.p1.defenceLock === undefined &&
+      accepted.players.p2.defenceLock === 'wind' && aiAvoidsLock,
+    `Blocked Ice: ${blocked === nextCast}; AI avoids Ice: ${aiAvoidsLock}`
+  );
+
   return results;
 }

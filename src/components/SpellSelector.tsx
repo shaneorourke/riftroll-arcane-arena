@@ -1,5 +1,5 @@
 import React from 'react';
-import { Swords, Shield, Sparkles } from 'lucide-react';
+import { Swords, Shield, Sparkles, LockKeyhole } from 'lucide-react';
 import { ARCANE_METER_MAX } from '../engine/combatEngine';
 import {
   ELEMENT_ORDER,
@@ -17,6 +17,7 @@ interface SpellSelectorProps {
   onToggleUltimate?: (val: boolean) => void;
   opposingAttackElement?: ElementSchool | null;
   disabled?: boolean;
+  lockedElement?: ElementSchool;
   onSelectElement: (element: ElementSchool) => void;
 }
 
@@ -28,6 +29,7 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
   onToggleUltimate,
   opposingAttackElement,
   disabled = false,
+  lockedElement,
   onSelectElement,
 }) => {
   const canUnleashUltimate = mode === 'attack' && arcaneMeter >= ARCANE_METER_MAX;
@@ -61,6 +63,12 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
         )}
       </div>
 
+      {lockedElement && (
+        <p className="mb-2 text-xs text-slate-400">
+          {ELEMENT_SCHOOLS[lockedElement].name} recharges after this defence.
+        </p>
+      )}
+
       {/* 8 Elemental Schools Grid */}
       <div className="grid grid-cols-4 gap-2">
         {ELEMENT_ORDER.map((el) => {
@@ -79,15 +87,16 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
             hasDefensiveElementalAdvantage(el, opposingAttackElement);
 
           const label = el === 'dark' ? 'Dark' : el === 'light' ? 'Light' : school.name;
+          const locked = el === lockedElement;
           const advantage = isStrongCounter ? '+2' : isWeakChoice ? '−2' : null;
 
           return (
             <button
               key={el}
               type="button"
-              disabled={disabled}
+              disabled={disabled || locked}
               onClick={() => onSelectElement(el)}
-              aria-label={advantage ? `${label}, ${isStrongCounter ? "defence bonus" : "opponent attack bonus"}` : label}
+              aria-label={locked ? `${label}, ready after this defence` : advantage ? `${label}, ${isStrongCounter ? "defence bonus" : "opponent attack bonus"}` : label}
               className={`relative flex min-h-18 flex-col items-center justify-center gap-1 rounded-lg border p-1 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-white disabled:opacity-50 ${
                 useUltimate && mode === 'attack'
                   ? 'bg-amber-950/40 border-amber-400/70 hover:bg-amber-900/50'
@@ -100,7 +109,8 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
                 <ElementIcon element={el} className="size-7 sm:size-9" />
               </span>
               <span className="text-xs font-bold text-white">{label}</span>
-              {advantage && (
+              {locked && <LockKeyhole aria-hidden="true" className="absolute right-1 top-1 size-3.5 text-white" />}
+              {advantage && !locked && (
                 <span aria-hidden="true" className={`absolute right-1 top-1 text-[10px] font-bold ${isStrongCounter ? 'text-emerald-300' : 'text-rose-300'}`}>
                   {advantage}
                 </span>

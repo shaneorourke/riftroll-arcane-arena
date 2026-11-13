@@ -69,16 +69,19 @@ export function chooseAIAttackDecision(
  */
 export function chooseAIDefenceElement(
   attackElement: ElementSchool,
-  difficulty: AIDifficulty
+  difficulty: AIDifficulty,
+  lockedElement?: ElementSchool
 ): ElementSchool {
+  const availableSchools = ELEMENT_ORDER.filter((element) => element !== lockedElement);
+
   // Find the school that defends strongly against `attackElement` (+2 effective defence roll)
   const idealCounter =
-    ELEMENT_ORDER.find((el) =>
+    availableSchools.find((el) =>
       hasDefensiveElementalAdvantage(attackElement, el)
-    ) ?? 'earth';
+    );
 
   // Find schools that do NOT give the attacker a +2 advantage
-  const neutralSchools = ELEMENT_ORDER.filter(
+  const neutralSchools = availableSchools.filter(
     (el) =>
       el !== idealCounter &&
       ELEMENT_SCHOOLS[attackElement].defendsStronglyAgainst !== el
@@ -88,22 +91,22 @@ export function chooseAIDefenceElement(
 
   if (difficulty === 'apprentice') {
     // Apprentice picks the ideal counter ~25% of the time, neutral ~50%, or random ~25%
-    if (d20 <= 5) return idealCounter;
+    if (d20 <= 5 && idealCounter) return idealCounter;
     if (d20 <= 15 && neutralSchools.length > 0) {
       return neutralSchools[d20 % neutralSchools.length];
     }
-    return ELEMENT_ORDER[d20 % ELEMENT_ORDER.length];
+    return availableSchools[d20 % availableSchools.length];
   }
 
   if (difficulty === 'sorcerer') {
     // Sorcerer picks the ideal +2 counter ~65% of the time, neutral otherwise
-    if (d20 <= 13) return idealCounter;
-    return neutralSchools[d20 % neutralSchools.length] ?? idealCounter;
+    if (d20 <= 13 && idealCounter) return idealCounter;
+    return neutralSchools[d20 % neutralSchools.length] ?? idealCounter ?? availableSchools[d20 % availableSchools.length];
   }
 
   // Archmage picks the optimal +2 elemental counter 90% of the time, neutral 10%
-  if (d20 <= 18) {
+  if (d20 <= 18 && idealCounter) {
     return idealCounter;
   }
-  return neutralSchools[d20 % neutralSchools.length] ?? idealCounter;
+  return neutralSchools[d20 % neutralSchools.length] ?? idealCounter ?? availableSchools[d20 % availableSchools.length];
 }

@@ -137,7 +137,8 @@ export default function App() {
       const timer = window.setTimeout(() => {
         const defElement = chooseAIDefenceElement(
           matchState.selectedAttackElement!,
-          matchState.settings.aiDifficulty
+          matchState.settings.aiDifficulty,
+          matchState.settings.defenceLockout ? defender.defenceLock : undefined
         );
         soundFX.playSelectMagic();
         setMatchState((prev) => selectDefenceMagic(prev, defElement));
@@ -796,6 +797,7 @@ export default function App() {
               p2={matchState.players.p2}
               activeAttackerId={matchState.activeAttackerId}
               activeActorId={activeActorId}
+              tabletop={isTabletopRotated}
               selectedAttackElement={matchState.selectedAttackElement}
               selectedDefenceElement={matchState.selectedDefenceElement}
               selectedUseUltimate={
@@ -855,6 +857,7 @@ export default function App() {
                   arcaneMeter={defender.arcaneMeter}
                   useUltimate={false}
                   opposingAttackElement={matchState.selectedAttackElement}
+                  lockedElement={matchState.settings.defenceLockout ? defender.defenceLock : undefined}
                   disabled={defender.isAI}
                   onSelectElement={handleSelectDefence}
                 />
@@ -1009,6 +1012,22 @@ export default function App() {
               </div>
 
               <div className="space-y-4 divide-y divide-slate-800 text-sm">
+                <div className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <div className="font-semibold text-white">Spell recharge</div>
+                    <p className="text-xs text-slate-400">Your attack spell rests during your next defence. Applies to new matches.</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-label="Spell recharge"
+                    aria-checked={settings.defenceLockout === true}
+                    onClick={() => setSettings((current) => ({ ...current, defenceLockout: !current.defenceLockout }))}
+                    className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-bold text-white"
+                  >
+                    {settings.defenceLockout ? 'On' : 'Off'}
+                  </button>
+                </div>
                 <div className="pt-3 flex items-center justify-between gap-4">
                   <div>
                     <div className="font-semibold text-white">

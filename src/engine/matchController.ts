@@ -112,6 +112,10 @@ export function selectAttackMagic(
 
   return {
     ...state,
+    players: {
+      ...state.players,
+      [attacker.id]: { ...attacker, defenceLock: state.settings.defenceLockout ? element : undefined },
+    },
     selectedAttackElement: element,
     selectedUseUltimate: validUltimate,
     phase: 'SELECT_DEFENCE_MAGIC',
@@ -126,8 +130,18 @@ export function selectDefenceMagic(
     return state;
   }
 
+  const defenderId = state.activeAttackerId === 'p1' ? 'p2' : 'p1';
+  const defender = state.players[defenderId];
+  if (state.settings.defenceLockout && defender.defenceLock === element) {
+    return state;
+  }
+
   return {
     ...state,
+    players: {
+      ...state.players,
+      [defenderId]: { ...defender, defenceLock: undefined },
+    },
     selectedDefenceElement: element,
     phase: 'ROLL_ATTACK_D20',
   };
@@ -564,12 +578,14 @@ export function startNextBattle(state: MatchState): MatchState {
         ...state.players.p1,
         hp: state.settings.maxHp,
         lastStandUsedThisBattle: false,
+        defenceLock: undefined,
         // arcaneMeter intentionally preserved!
       },
       p2: {
         ...state.players.p2,
         hp: state.settings.maxHp,
         lastStandUsedThisBattle: false,
+        defenceLock: undefined,
         // arcaneMeter intentionally preserved!
       },
     },
