@@ -1,8 +1,10 @@
+import type { PlayerId } from '../engine/types';
+import { D20Face } from './D20Face';
 import { soundFX } from '../utils/sound';
 import { ExitMatchDialog } from './ExitMatchDialog';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
-import { glacierAttackBonus, glacierRiftRemaining } from '../engine/matchController';
+import { arenaAttackBonus, arenaShiftRemaining, getArenaShift, SHIFT_ARENAS, SHIFT_ARENA_IDS } from '../engine/matchController';
 import { ArenaStage } from './ArenaStage';
 import { PlayerHudCard } from './PlayerHudCard';
 import { SpellSelector } from './SpellSelector';
@@ -24,6 +26,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
   onClose: () => void;
   reducedMotion: boolean;
 }) {
+  const [name, setName] = useState('');
   const [code, setCode] = useState(inviteCode);
   const [seat, setSeat] = useState(savedSeat);
   const [room, setRoom] = useState<RoomSnapshot | null>(null);
@@ -33,13 +36,33 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
   const [ultimate, setUltimate] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [roll, setRoll] = useState<RoomSnapshot['lastRoll']>();
+  const [rollingFace, setRollingFace] = useState<number | null>(null);
   const [playback, setPlayback] = useState<RoomSnapshot['playback']>();
   const prefersReducedMotion = useReducedMotion();
   const reducedMotion = reduceArenaMotion || prefersReducedMotion === true;
   const seenRoom = useRef<{ code: string; revision: number } | null>(null);
 
   useEffect(() => {
-    if (!playback) return;
+    if (!roll) return;
+    soundFX.playDiceRoll();
+    const animation = reducedMotion ? undefined : window.setInterval(() => {
+      setRollingFace((value) => ((value ?? 1) + 6) % 20 + 1);
+    }, 55);
+    const reveal = window.setTimeout(() => {
+      window.clearInterval(animation);
+      setRollingFace(null);
+    }, 480);
+    const finish = window.setTimeout(() => setRoll(undefined), reducedMotion ? 650 : 1050);
+    return () => {
+      window.clearInterval(animation);
+      window.clearTimeout(reveal);
+      window.clearTimeout(finish);
+    };
+  }, [roll, reducedMotion]);
+
+  useEffect(() => {
+    if (!playback || roll) return;
     if (playback.kind === 'clash' || (playback.kind === 'last-stand' && playback.roll === 20)) {
       soundFX.playParryOrClash();
     } else if (playback.kind === 'last-stand') {
@@ -50,13 +73,21 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
       : reducedMotion ? 650 : 950;
     const timer = window.setTimeout(() => setPlayback(undefined), duration);
     return () => window.clearTimeout(timer);
-  }, [playback, reducedMotion]);
+  }, [playback, reducedMotion, roll]);
 
   function update(next: RoomSnapshot) {
     const seen = seenRoom.current;
     if (seen?.code === next.code && next.revision <= seen.revision) return;
-    if (seen?.code === next.code && next.playback && next.playback.revision > seen.revision) {
+    if (next.exitedBy) {
+      setPlayback(undefined);
+      setRoll(undefined);
+      setRollingFace(null);
+    } else if (seen?.code === next.code && next.playback && next.playback.revision > seen.revision) {
       setPlayback(next.playback);
+    }
+    if (!next.exitedBy && seen?.code === next.code && next.lastRoll && next.lastRoll.revision > seen.revision) {
+      setRollingFace(reducedMotion ? null : 7);
+      setRoll(next.lastRoll);
     }
     seenRoom.current = { code: next.code, revision: next.revision };
     setRoom(next);
@@ -108,7 +139,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
   function enter(join: boolean) {
     soundFX.unlock();
     return run(async () => {
-      const result = join ? await multiplayerTransport.join(code.trim().toUpperCase()) : await multiplayerTransport.create();
+      const result = join ? await multiplayerTransport.join(code.trim().toUpperCase(), name) : await multiplayerTransport.create(name);
       const { token, ...snapshot } = result;
       sessionStorage.setItem(seatKey(snapshot.code), token);
       sessionStorage.setItem(roomKey, snapshot.code);
@@ -129,6 +160,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
     history.replaceState(null, '', url);
     seenRoom.current = null;
     setPlayback(undefined);
+    setRoll(undefined);
     setCode('');
     setSeat(null);
     setRoom(null);
@@ -140,7 +172,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
   }
 
   function act(intent: DuelIntent) {
-    if (!seat || !room || busy || connection || playback) return;
+    if (!seat || !room || busy || connection || playback || roll || room.exitedBy) return;
     soundFX.unlock();
     void run(async () => {
       update(await multiplayerTransport.act(seat, room.revision, intent));
@@ -157,13 +189,26 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
     : phase === 'SELECT_DEFENCE_MAGIC' || phase === 'ROLL_DEFENCE_D20' ? defender
     : phase === 'ARCANE_CLASH_ROLL' ? room?.clashActor
     : phase === 'LAST_STAND_PROMPT' ? state?.pendingLastStandPlayerId : null;
-  const acting = !playback && room && actor === room.seat;
+  const acting = !roll && !playback && room && actor === room.seat;
   const player = room && state?.players[room.seat];
   const disabled = busy || !!connection || !!playback;
-  const exchange = playback?.kind === 'exchange' ? playback.resolution : null;
-  const clash = playback?.kind === 'clash' ? playback : null;
-  const lastStand = playback?.kind === 'last-stand' ? playback : null;
+  const exchange = !roll && playback?.kind === 'exchange' ? playback.resolution : null;
+  const clash = !roll && playback?.kind === 'clash' ? playback : null;
+  const lastStand = !roll && playback?.kind === 'last-stand' ? playback : null;
   const resolution = exchange ?? clash?.resolution;
+  // ArenaStage draws p1 on the left. Translate only its presentation props.
+  const localSeat = room?.seat ?? 'p1';
+  const opponentSeat: PlayerId = localSeat === 'p1' ? 'p2' : 'p1';
+  const arenaSide = (id: PlayerId): PlayerId => id === localSeat ? 'p1' : 'p2';
+  const arenaActor = actor && !playback ? arenaSide(actor) : null;
+  const lastStandPlayer = lastStand?.playerId ?? (playback ? null : state?.pendingLastStandPlayerId);
+  const arenaExchange = useMemo(() => {
+    if (!exchange || localSeat === 'p1') return exchange;
+    return { ...exchange, attackerId: exchange.defenderId, defenderId: exchange.attackerId };
+  }, [exchange, localSeat]);
+  const arenaClashRolls = clash ? { p1: clash.rolls[localSeat], p2: clash.rolls[opponentSeat] }
+    : phase === 'ARCANE_CLASH_ROLL' ? {} : null;
+
 
   return (
     <section className="mx-auto max-w-4xl space-y-4 px-4 py-6">
@@ -171,10 +216,10 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
         <h1 className="text-2xl font-bold">Private duel</h1>
         <div className="flex flex-wrap gap-2">
           {seat && <button disabled={busy} className="rounded-lg bg-slate-800 px-3 py-2" onClick={() => {
-            if (phase === 'MATCH_OVER') leave();
+            if (phase === 'MATCH_OVER' || room?.exitedBy) leave();
             else setConfirmExit(true);
           }}>
-            {phase === 'MATCH_OVER' ? 'New duel' : 'Exit Match'}
+            {phase === 'MATCH_OVER' || room?.exitedBy ? 'New duel' : 'Exit Match'}
           </button>}
           <button className="rounded-lg bg-slate-800 px-3 py-2" onClick={onClose}>Arena Menu</button>
         </div>
@@ -183,44 +228,74 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
       {connection && <p role="status">{connection}</p>}
       {!seat && (
         <form className="flex flex-wrap items-end gap-3" onSubmit={(event) => { event.preventDefault(); void enter(true); }}>
-          <button type="button" className={button} disabled={busy} onClick={() => void enter(false)}>Host a duel</button>
+          <label className="text-sm">Mage name
+            <input className="mt-1 block rounded-lg border border-slate-600 bg-slate-900 px-3 py-2"
+              value={name} maxLength={24} onChange={(event) => setName(event.currentTarget.value)} />
+          </label>
+          <button type="button" className={button} disabled={busy || !name.trim()} onClick={() => void enter(false)}>Host a duel</button>
           <label className="text-sm">Room code
             <input className="mt-1 block rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 uppercase"
               value={code} maxLength={10} onChange={(event) => setCode(event.currentTarget.value)} />
           </label>
-          <button className={button} disabled={busy || !/^[A-Fa-f0-9]{10}$/.test(code.trim())}>Join a duel</button>
+          <button className={button} disabled={busy || !name.trim() || !/^[A-Fa-f0-9]{10}$/.test(code.trim())}>Join a duel</button>
         </form>
       )}
       {seat && !room && !connection && <p role="status">Opening room…</p>}
-      {room && !room.ready && (
+      {room?.exitedBy && (
+        <p role="status" className="rounded-lg border border-amber-500/60 bg-slate-900 p-4 font-bold">
+          {room.exitedBy === room.seat ? 'You left the match.' : `${room.match.players[room.exitedBy].name} left the match.`}
+        </p>
+      )}
+      {room && !room.exitedBy && !room.ready && (
         <div className="space-y-3">
           <p role="status">Waiting for a friend</p>
           <p>Room code <strong className="font-mono">{room.code}</strong></p>
-          <button className={button} onClick={() => {
-            const link = new URL(location.href);
-            link.searchParams.set('room', room.code);
-            void run(async () => { await navigator.clipboard.writeText(link.href); setCopied(true); });
-          }}>{copied ? 'Link copied' : 'Copy invite link'}</button>
+          <label className="block max-w-lg text-sm">
+            Invite link
+            <input readOnly value={location.href} onFocus={(event) => event.currentTarget.select()}
+              className="mt-1 block w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2" />
+          </label>
+          {navigator.clipboard?.writeText && (
+            <button type="button" className={button} onClick={() => {
+              void run(async () => { await navigator.clipboard.writeText(location.href); setCopied(true); });
+            }}>{copied ? 'Link copied' : 'Copy invite link'}</button>
+          )}
         </div>
       )}
-      {room?.ready && state && player && (
+      {room?.ready && !room.exitedBy && state && player && (
         <>
-          <p className="text-sm">Battle {state.battleNumber} · {state.players.p1.battlesWon}–{state.players.p2.battlesWon} · You’re {player.name}</p>
+          <p className="text-sm">Battle {state.battleNumber} · {state.players[localSeat].battlesWon}–{state.players[opponentSeat].battlesWon} · You’re {player.name}</p>
           <div className="grid gap-2 sm:grid-cols-2">
-            {(['p1', 'p2'] as const).map((id) => <PlayerHudCard key={id} player={state.players[id]} role={id === attacker ? 'attacker' : 'defender'} selectedElement={id === attacker ? state.selectedAttackElement : state.selectedDefenceElement} requiredWins={2} compact />)}
+            {[localSeat, opponentSeat].map((id) => <PlayerHudCard key={id} player={state.players[id]} role={id === attacker ? 'attacker' : 'defender'} selectedElement={id === attacker ? state.selectedAttackElement : state.selectedDefenceElement} requiredWins={2} compact />)}
           </div>
-          <ArenaStage p1={state.players.p1} p2={state.players.p2} activeAttackerId={resolution?.attackerId ?? state.activeAttackerId}
-            activeActorId={playback ? null : actor ?? null} selectedAttackElement={resolution?.attackElement ?? state.selectedAttackElement} selectedDefenceElement={resolution?.defenceElement ?? state.selectedDefenceElement}
-            selectedUseUltimate={resolution?.isUltimate ?? state.selectedUseUltimate} isAnimatingExchange={!!exchange} pendingResolution={exchange}
-            clashRolls={clash?.rolls ?? (phase === 'ARCANE_CLASH_ROLL' ? {} : null)}
-            lastStandId={lastStand?.playerId ?? (playback ? null : state.pendingLastStandPlayerId)}
+          <ArenaStage p1={{ ...state.players[localSeat], id: 'p1' }}
+            p2={{ ...state.players[opponentSeat], id: 'p2' }}
+            activeAttackerId={arenaSide(resolution?.attackerId ?? state.activeAttackerId)}
+            activeActorId={arenaActor} selectedAttackElement={resolution?.attackElement ?? state.selectedAttackElement} selectedDefenceElement={resolution?.defenceElement ?? state.selectedDefenceElement}
+            selectedUseUltimate={resolution?.isUltimate ?? state.selectedUseUltimate} isAnimatingExchange={!!exchange} pendingResolution={arenaExchange}
+            clashRolls={arenaClashRolls}
+            lastStandId={lastStandPlayer ? arenaSide(lastStandPlayer) : null}
             lastStandRoll={lastStand?.roll ?? null}
-            glacierTurns={glacierRiftRemaining(state)}
+            shiftArena={getArenaShift(state)?.id}
+            shiftTurns={arenaShiftRemaining(state)}
             reducedMotion={reducedMotion} onSkipAnimation={() => setPlayback(undefined)} />
-          {acting && phase === 'SELECT_ATTACK_MAGIC' && state.glacierRiftStartedOn === undefined && (
-            <button type="button" className={button} disabled={disabled} onClick={() => act({ type: 'open-glacier-rift' })}>
-              Open Glacier Rift
-            </button>
+          {roll && (
+            <div className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900 px-3">
+              <D20Face value={rollingFace ?? roll.value} isRolling={rollingFace !== null}
+                accentHex={state.players[roll.playerId].avatarColor} />
+              <p role="status" className="font-bold">
+                {state.players[roll.playerId].name} {rollingFace !== null ? 'is rolling…' : `rolled ${roll.value}`}
+              </p>
+            </div>
+          )}
+          {acting && phase === 'SELECT_ATTACK_MAGIC' && !getArenaShift(state) && (
+            <div className="flex flex-wrap gap-2">
+              {SHIFT_ARENA_IDS.map((id) => (
+                <button key={id} type="button" className={button} disabled={disabled} onClick={() => act({ type: 'open-arena', arena: id })}>
+                  Open {SHIFT_ARENAS[id].name}
+                </button>
+              ))}
+            </div>
           )}
           {acting && (phase === 'SELECT_ATTACK_MAGIC' || phase === 'SELECT_DEFENCE_MAGIC') && (
             <SpellSelector mode={phase === 'SELECT_ATTACK_MAGIC' ? 'attack' : 'defence'} playerName={player.name}
@@ -233,21 +308,30 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
               {phase === 'LAST_STAND_PROMPT' ? 'Roll 20 to survive' : phase === 'ARCANE_CLASH_ROLL' ? 'Roll again' : 'Roll'}
             </button>
           )}
-          {!playback && phase === 'BATTLE_OVER' && (
+          {!roll && !playback && phase === 'BATTLE_OVER' && (
             room.seat === 'p1' ? <button className={button} disabled={disabled} onClick={() => act({ type: 'next-battle' })}>Next battle</button>
               : <p>Waiting for the host to start the next battle.</p>
           )}
-          {!playback && phase === 'MATCH_OVER' && state.matchWinnerId && <p className="text-xl font-bold">{state.players[state.matchWinnerId].name} wins!</p>}
-          {!playback && !acting && actor && <p role="status">Waiting for {state.players[actor].name}…</p>}
+          {!roll && !playback && phase === 'MATCH_OVER' && state.matchWinnerId && <p className="text-xl font-bold">{state.players[state.matchWinnerId].name} wins!</p>}
+          {!roll && !playback && !acting && actor && <p role="status">Waiting for {state.players[actor].name}…</p>}
           {state.attackRollResult !== null && (
-            <p>Attack roll {state.attackRollResult}{glacierAttackBonus(state) > 0 && ' · Glacier Rift +2'}</p>
+            <p>Attack roll {state.attackRollResult}{arenaAttackBonus(state) > 0 && ' · Arena +2'}</p>
           )}
-          {!playback && state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
+          {!roll && !playback && state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
         </>
       )}
       {confirmExit && <ExitMatchDialog onCancel={() => setConfirmExit(false)} onExit={() => {
-        leave();
-        onClose();
+        if (!seat) return;
+        setConfirmExit(false);
+        void run(async () => {
+          try {
+            await multiplayerTransport.exit(seat);
+          } catch (failure) {
+            if (!(failure instanceof RoomError) || ![403, 404].includes(failure.status)) throw failure;
+          }
+          leave();
+          onClose();
+        });
       }} />}
     </section>
   );

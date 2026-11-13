@@ -37,7 +37,7 @@ Choose a spell → roll → watch the hit → see what changed.
 ### Private online guest duels
 - The local prototype supports two guests, invite links and room codes, server-controlled dice, and returning to the same seat after a refresh.
 - Deploy the game and room server together over HTTPS, then test a full best-of-three on separate devices, including a reconnect.
-- Bring the local exchange animations to online duels and add room persistence across server restarts before a wider release.
+- Online duels use the arena exchange animations. The standalone server restores rooms across restarts when its room directory is retained.
 
 ### Expanded grimoire and named spells
 - Expand each of the 8 elemental schools from 1 offensive / 1 defensive / 1 ultimate spell to a customizable 3-spell loadout per school.

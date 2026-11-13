@@ -9,6 +9,7 @@ import {
 } from './combatEngine';
 import { chooseRandomStarter } from './dice';
 import {
+  ArenaId,
   BattlePhase,
   CombatLogEntry,
   ElementSchool,
@@ -98,21 +99,38 @@ function getAITitle(difficulty: MatchSettings['aiDifficulty']): string {
   }
 }
 
-export function glacierRiftRemaining(state: MatchState): number {
-  return state.glacierRiftStartedOn === undefined
-    ? 0
-    : Math.max(0, state.glacierRiftStartedOn + 2 - state.turnNumber);
+export const SHIFT_ARENAS = {
+  glacier: { name: 'Glacier Rift', element: 'ice', label: 'Ice', icon: '❄' },
+  forge: { name: 'Ember Forge', element: 'fire', label: 'Fire', icon: '🔥' },
+  temple: { name: 'Flooded Temple', element: 'water', label: 'Water', icon: '🌊' },
+  storm: { name: 'Storm Spire', element: 'lightning', label: 'Lightning', icon: '⚡' },
+} as const;
+
+export const SHIFT_ARENA_IDS = Object.keys(SHIFT_ARENAS) as ArenaId[];
+
+export function isArenaId(value: unknown): value is ArenaId {
+  return typeof value === 'string' && Object.hasOwn(SHIFT_ARENAS, value);
 }
 
-export function openGlacierRift(state: MatchState): MatchState {
-  if (state.phase !== 'SELECT_ATTACK_MAGIC' || state.glacierRiftStartedOn !== undefined) {
-    return state;
-  }
-  return { ...state, glacierRiftStartedOn: state.turnNumber };
+export function getArenaShift(state: MatchState): MatchState['arenaShift'] {
+  return state.arenaShift ?? (state.glacierRiftStartedOn === undefined
+    ? undefined : { id: 'glacier', startedOn: state.glacierRiftStartedOn });
 }
 
-export function glacierAttackBonus(state: MatchState): number {
-  return state.selectedAttackElement === 'ice' && glacierRiftRemaining(state) > 0 ? 2 : 0;
+export function arenaShiftRemaining(state: MatchState): number {
+  const shift = getArenaShift(state);
+  return shift ? Math.max(0, shift.startedOn + 2 - state.turnNumber) : 0;
+}
+
+export function openArenaShift(state: MatchState, id: ArenaId): MatchState {
+  if (state.phase !== 'SELECT_ATTACK_MAGIC' || getArenaShift(state)) return state;
+  return { ...state, arenaShift: { id, startedOn: state.turnNumber } };
+}
+
+export function arenaAttackBonus(state: MatchState): number {
+  const shift = getArenaShift(state);
+  return shift && state.selectedAttackElement === SHIFT_ARENAS[shift.id].element &&
+    arenaShiftRemaining(state) > 0 ? 2 : 0;
 }
 
 export function selectAttackMagic(
@@ -199,7 +217,7 @@ export function submitDefenceRoll(
     attackerId,
     defenderId,
     attackElement: state.selectedAttackElement,
-    arenaAttackBonus: glacierAttackBonus(state),
+    arenaAttackBonus: arenaAttackBonus(state),
     defenceElement: state.selectedDefenceElement,
     isUltimate: state.selectedUseUltimate,
     naturalAttackRoll: state.attackRollResult,
@@ -577,6 +595,7 @@ export function startNextBattle(state: MatchState): MatchState {
     ...state,
     battleNumber: nextBattleNumber,
     glacierRiftStartedOn: undefined,
+    arenaShift: undefined,
     turnNumber: 1,
     phase: 'SELECT_ATTACK_MAGIC',
     startingPlayerThisBattle: nextStarter,

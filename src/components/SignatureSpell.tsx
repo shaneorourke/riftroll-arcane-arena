@@ -1,5 +1,7 @@
+import { rollBand, rollPresentation } from '../utils/rollPresentation';
 import { useId } from 'react';
 import { createPortal } from 'react-dom';
+import { UltimateScene } from './UltimateScene';
 import { ElementImpact } from './ElementImpact';
 import { ELEMENT_SCHOOLS } from '../engine/elements';
 import { ExchangeResolutionResult } from '../engine/types';
@@ -22,6 +24,8 @@ export function SignatureSpell({
   const impact = ice && defenceOutcome === 'full_damage'
     ? fromLeft ? '78%' : '22%'
     : fromLeft ? '73%' : '27%';
+  const attackBand = rollBand(resolution.naturalAttackRoll);
+  const defenceBand = rollBand(resolution.naturalDefenceRoll);
   const reflected = defenceOutcome === 'parry';
 
   if (attackElement === 'dark' && isUltimate) {
@@ -58,7 +62,9 @@ export function SignatureSpell({
 
   const ultimateOverlay = isUltimate && createPortal(
       <div aria-hidden="true" className={`element-ultimate element-ultimate-${attackElement} pointer-events-none fixed inset-0 z-40`}
-        data-static={reducedMotion} style={{ color }} />,
+        data-static={reducedMotion} data-reflected={reflected} style={{ color }}>
+        {attackElement !== 'dark' && <UltimateScene element={attackElement} fromLeft={fromLeft} />}
+      </div>,
       document.body
     );
 
@@ -72,6 +78,7 @@ export function SignatureSpell({
         className="ice-ward pointer-events-none absolute z-[11]"
         data-static={reducedMotion}
         data-outcome={defenceOutcome}
+        data-roll-band={defenceBand}
         style={{ left: impact, color: wardColor }}
         viewBox="0 0 160 160"
       >
@@ -100,11 +107,24 @@ export function SignatureSpell({
   return (
     <>
     {ultimateOverlay}
+    {!ice && (blocked || cracked || reflected) && (
+      <svg aria-hidden="true" className="roll-ward pointer-events-none absolute z-[11]"
+        data-static={reducedMotion} data-outcome={defenceOutcome} data-roll-band={defenceBand}
+        style={{ left: impact, color: reflected ? '#fde68a' : ELEMENT_SCHOOLS[resolution.defenceElement].primaryHex }}
+        viewBox="0 0 120 120">
+        <path d="M60 11 96 31v28c0 24-17 40-36 51C41 99 24 83 24 59V31Z"
+          fill="currentColor" fillOpacity=".17" stroke="currentColor" strokeWidth="4" />
+        {cracked && <path d="m60 20-8 37 17 4-13 39" fill="none" stroke="white" strokeWidth="3" />}
+        {blocked && <path d="m40 59 13 13 28-30" fill="none" stroke="currentColor" strokeWidth="5" />}
+        {reflected && <path d="M84 74H53a13 13 0 0 1 0-26h22m-11-11 11 11-11 11" transform={fromLeft ? 'translate(120 0) scale(-1 1)' : undefined} fill="none" stroke="currentColor" strokeWidth="5" />}
+      </svg>
+    )}
     <svg
       aria-hidden="true"
       className={`signature-impact signature-${attackElement} pointer-events-none absolute z-[1] ${isUltimate ? 'signature-large' : ''}`}
       data-static={reducedMotion}
-      style={{ left: impact, color }}
+      data-roll-band={attackBand}
+      style={{ left: impact, color, transform: isUltimate ? undefined : `scale(${rollPresentation[attackBand].size})` }}
       viewBox="0 0 200 200"
     >
       <g transform={fromLeft ? undefined : 'translate(200 0) scale(-1 1)'}>

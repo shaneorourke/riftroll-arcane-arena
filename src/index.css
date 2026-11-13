@@ -328,3 +328,131 @@
   from { opacity: 0; scale: .72; }
   to { opacity: 1; scale: 1; }
 }
+
+.forge-heat {
+  background: radial-gradient(ellipse at 50% 24%, transparent 35%, #7f1d1d50 73%, #f9731680);
+  box-shadow: inset 0 -16px 48px #fb923c75;
+}
+.forge-crack {
+  position: absolute;
+  width: min(82%, 680px);
+  left: 50%;
+  bottom: 6%;
+  translate: -50%;
+  filter: drop-shadow(0 0 12px #fb6418);
+  animation: forge-open 820ms ease-out both;
+}
+.forge-ember {
+  position: absolute;
+  bottom: 22%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fed7aa;
+  box-shadow: 0 0 10px 2px #f97316;
+  animation: forge-ember 900ms ease-out both;
+}
+.forge-arrival[data-static="true"] * { animation: none; }
+@keyframes forge-open {
+  from { scale: .18 .5; opacity: 0; }
+  to { scale: 1; opacity: 1; }
+}
+@keyframes forge-ember {
+  from { transform: translateY(0); opacity: .95; }
+  to { transform: translate(26px, -140px); opacity: 0; }
+}
+
+.storm-sky {
+  background: radial-gradient(ellipse at 50% 0%, #8b5cf655, transparent 68%),
+    linear-gradient(0deg, #312e8166, transparent 46%);
+}
+.storm-bolt {
+  filter: drop-shadow(0 0 8px #a78bfa);
+  animation: storm-arrival 700ms ease-out both;
+}
+.storm-spire[data-static="true"] .storm-bolt { animation: none; opacity: .65; }
+@keyframes storm-arrival {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: .28; }
+}
+
+.temple-depths {
+  background: radial-gradient(ellipse at 50% 0%, #2dd4bf3d, transparent 62%),
+    linear-gradient(0deg, #07598580, transparent 66%);
+}
+.temple-water { animation: temple-flood 850ms ease-out both; }
+.temple-arrival[data-static="true"] .temple-water { animation: none; }
+@keyframes temple-flood {
+  from { transform: translateY(85px); opacity: .2; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.ultimate-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: ultimate-reveal 1150ms ease-out both;
+}
+.ultimate-scene-fire { transform-origin: bottom; animation-name: ultimate-rise; }
+.ultimate-scene-water { transform-origin: left bottom; animation-name: ultimate-surge; }
+.ultimate-scene-earth { transform-origin: bottom; animation-name: ultimate-rise; }
+.ultimate-scene-lightning { animation-name: ultimate-bolt; }
+.ultimate-scene-wind { animation-name: ultimate-vortex; }
+.ultimate-scene-ice { animation-name: ultimate-freeze; }
+.ultimate-scene-light { transform-origin: top; animation-name: ultimate-rays; }
+.element-ultimate[data-static="true"] .ultimate-scene { animation: none; }
+
+@keyframes ultimate-reveal {
+  0% { opacity: 0; scale: .9; }
+  38%, 75% { opacity: 1; scale: 1; }
+  100% { opacity: 0; }
+}
+@keyframes ultimate-rise {
+  0% { opacity: 0; scale: 1 .28; }
+  37%, 69% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1 1.08; }
+}
+@keyframes ultimate-surge {
+  0% { opacity: 0; translate: 0 24%; scale: .76; }
+  43%, 70% { opacity: 1; translate: 0; scale: 1; }
+  100% { opacity: 0; translate: 0 5%; }
+}
+@keyframes ultimate-bolt {
+  0%, 17% { opacity: 0; }
+  35%, 48% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes ultimate-vortex {
+  0% { opacity: 0; rotate: -18deg; scale: .85; }
+  42% { opacity: .9; }
+  100% { opacity: 0; rotate: 16deg; scale: 1.2; }
+}
+@keyframes ultimate-freeze {
+  0% { opacity: 0; scale: 1.25; }
+  37%, 76% { opacity: 1; scale: 1; }
+  100% { opacity: 0; }
+}
+@keyframes ultimate-rays {
+  0% { opacity: 0; scale: 1 .2; }
+  40%, 72% { opacity: 1; scale: 1; }
+  100% { opacity: 0; }
+}
+
+.roll-ward {
+  top: 48%;
+  width: clamp(60px, 14vw, 130px);
+  translate: -50% -50%;
+  filter: drop-shadow(0 0 9px currentColor);
+  animation: roll-ward 620ms 300ms ease-out both;
+}
+.roll-ward[data-roll-band="low"], .ice-ward[data-roll-band="low"] { transform: scale(.74); }
+.roll-ward[data-roll-band="high"], .ice-ward[data-roll-band="high"] { transform: scale(1.22); }
+.roll-ward[data-static="true"] { animation: none; }
+
+@keyframes roll-ward {
+  0% { opacity: 0; scale: .65; }
+  18%, 54% { opacity: .95; scale: 1; }
+  100% { opacity: 0; }
+}

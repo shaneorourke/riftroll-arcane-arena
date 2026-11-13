@@ -1,4 +1,4 @@
-import type { ElementSchool, ExchangeResolutionResult, MatchState, PlayerId } from '../engine/types';
+import type { ArenaId, ElementSchool, ExchangeResolutionResult, MatchState, PlayerId } from '../engine/types';
 
 export interface GuestSeat {
   code: string;
@@ -19,13 +19,15 @@ export interface RoomSnapshot {
   match: MatchState;
   clashActor: PlayerId | null;
   playback?: RoomPlayback;
+  exitedBy?: PlayerId;
+  lastRoll?: { revision: number; playerId: PlayerId; value: number };
 }
 
 export type DuelIntent =
   | { type: 'attack'; element: ElementSchool; ultimate: boolean }
   | { type: 'defend'; element: ElementSchool }
   | { type: 'roll' }
-  | { type: 'open-glacier-rift' }
+  | { type: 'open-arena'; arena: ArenaId }
   | { type: 'next-battle' };
 
 export class RoomError extends Error {
@@ -50,9 +52,10 @@ async function request<T>(path: string, options?: RequestInit, seat?: GuestSeat)
 }
 
 export const multiplayerTransport = {
-  create: () => request<RoomSnapshot & GuestSeat>('', { method: 'POST' }),
-  join: (code: string) => request<RoomSnapshot & GuestSeat>(`/${encodeURIComponent(code)}/join`, { method: 'POST' }),
+  create: (name: string) => request<RoomSnapshot & GuestSeat>('', { method: 'POST', body: JSON.stringify({ name }) }),
+  join: (code: string, name: string) => request<RoomSnapshot & GuestSeat>(`/${encodeURIComponent(code)}/join`, { method: 'POST', body: JSON.stringify({ name }) }),
   read: (seat: GuestSeat, signal: AbortSignal) => request<RoomSnapshot>(`/${seat.code}`, { signal }, seat),
+  exit: (seat: GuestSeat) => request<{ ok: true }>(`/${seat.code}/exit`, { method: 'POST' }, seat),
   act: (seat: GuestSeat, revision: number, intent: DuelIntent) =>
     request<RoomSnapshot>(`/${seat.code}/intent`, {
       method: 'POST', body: JSON.stringify({ revision, ...intent }),

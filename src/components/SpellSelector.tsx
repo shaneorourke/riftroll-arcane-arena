@@ -64,8 +64,9 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
       </div>
 
       {lockedElement && (
-        <p className="mb-2 text-xs text-slate-400">
-          {ELEMENT_SCHOOLS[lockedElement].name} recharges after this defence.
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-200">
+          <LockKeyhole aria-hidden="true" className="size-3.5 shrink-0" />
+          {ELEMENT_SCHOOLS[lockedElement].name} is locked for this defence.
         </p>
       )}
 
@@ -98,7 +99,8 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
               onClick={() => onSelectElement(el)}
               aria-label={locked ? `${label}, ready after this defence` : advantage ? `${label}, ${isStrongCounter ? "defence bonus" : "opponent attack bonus"}` : label}
               className={`relative flex min-h-18 flex-col items-center justify-center gap-1 rounded-lg border p-1 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-white disabled:opacity-50 ${
-                useUltimate && mode === 'attack'
+                locked ? 'border-slate-500 bg-slate-950 cursor-not-allowed disabled:opacity-100'
+                : useUltimate && mode === 'attack'
                   ? 'bg-amber-950/40 border-amber-400/70 hover:bg-amber-900/50'
                   : isStrongCounter
                   ? 'bg-emerald-950/40 border-emerald-400/80 hover:bg-emerald-900/50'
@@ -109,7 +111,7 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
                 <ElementIcon element={el} className="size-7 sm:size-9" />
               </span>
               <span className="text-xs font-bold text-white">{label}</span>
-              {locked && <LockKeyhole aria-hidden="true" className="absolute right-1 top-1 size-3.5 text-white" />}
+              {locked && <LockKeyhole aria-hidden="true" className="absolute right-1 top-1 size-3.5 text-amber-200" />}
               {advantage && !locked && (
                 <span aria-hidden="true" className={`absolute right-1 top-1 text-[10px] font-bold ${isStrongCounter ? 'text-emerald-300' : 'text-rose-300'}`}>
                   {advantage}

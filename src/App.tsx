@@ -43,9 +43,12 @@ import {
   createInitialMatchState,
   selectAttackMagic,
   selectDefenceMagic,
-  openGlacierRift,
-  glacierRiftRemaining,
-  glacierAttackBonus,
+  openArenaShift,
+  arenaShiftRemaining,
+  arenaAttackBonus,
+  getArenaShift,
+  SHIFT_ARENAS,
+  SHIFT_ARENA_IDS,
   startNextBattle,
   submitArcaneClashRolls,
   submitAttackRoll,
@@ -884,7 +887,8 @@ export default function App() {
                 activeAttackerId={matchState.activeAttackerId}
                 activeActorId={activeActorId}
                 tabletop={isTabletopRotated}
-                glacierTurns={glacierRiftRemaining(matchState)}
+                shiftArena={getArenaShift(matchState)?.id}
+                shiftTurns={arenaShiftRemaining(matchState)}
                 clashRolls={isClash ? clashRolls : null}
                 lastStandId={lastStandId}
                 lastStandRoll={lastStandRoll}
@@ -959,12 +963,15 @@ export default function App() {
                     />
                   )}
 
-                  {matchState.phase === 'SELECT_ATTACK_MAGIC' && !attacker.isAI &&
-                    matchState.glacierRiftStartedOn === undefined && (
-                    <button type="button" className="m-2 rounded-lg border border-cyan-500 px-3 py-2 text-sm font-bold text-cyan-200"
-                      onClick={() => setMatchState(openGlacierRift)}>
-                      Open Glacier Rift
-                    </button>
+                  {matchState.phase === 'SELECT_ATTACK_MAGIC' && !attacker.isAI && !getArenaShift(matchState) && (
+                    <div className="flex flex-wrap gap-2 p-2">
+                      {SHIFT_ARENA_IDS.map((id) => (
+                        <button key={id} type="button" className="rounded-lg border border-slate-500 px-3 py-2 text-sm font-bold"
+                          onClick={() => setMatchState((state) => openArenaShift(state, id))}>
+                          Open {SHIFT_ARENAS[id].name}
+                        </button>
+                      ))}
+                    </div>
                   )}
 
                   {matchState.phase === 'SELECT_ATTACK_MAGIC' && (
@@ -1008,7 +1015,7 @@ export default function App() {
                           ELEMENT_SCHOOLS[matchState.selectedAttackElement]
                             .primaryHex
                         }
-                        modifier={currentMod.attackModifier + glacierAttackBonus(matchState)}
+                        modifier={currentMod.attackModifier + arenaAttackBonus(matchState)}
                         autoRollForAI={attacker.isAI}
                         reducedMotion={matchState.settings.reducedMotion}
                         onRollConfirmed={handleAttackRollConfirmed}

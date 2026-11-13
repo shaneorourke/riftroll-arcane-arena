@@ -1,10 +1,13 @@
+import { rollBand, rollPresentation } from '../utils/rollPresentation';
 import { soundFX } from '../utils/sound';
 import React, { useEffect, useRef } from 'react';
 import { Sparkles, FastForward, Shield, CornerUpLeft, X } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { LAST_STAND_COUNTER_DAMAGE, resolveArcaneClash } from '../engine/combatEngine';
+import { SHIFT_ARENAS } from '../engine/matchController';
 import { ELEMENT_SCHOOLS } from '../engine/elements';
 import {
+  ArenaId,
   ElementSchool,
   ExchangeResolutionResult,
   PlayerId,
@@ -19,7 +22,8 @@ interface ArenaStageProps {
   activeAttackerId: PlayerId;
   activeActorId: PlayerId | null;
   tabletop?: boolean;
-  glacierTurns?: number;
+  shiftArena?: ArenaId;
+  shiftTurns?: number;
   lastStandId?: PlayerId | null;
   lastStandRoll?: number | null;
   clashRolls?: Partial<Record<PlayerId, number>> | null;
@@ -42,6 +46,13 @@ interface Particle {
   alpha: number;
   decay: number;
 }
+
+const arenaBackdrops: Record<ArenaId, string> = {
+  glacier: 'glacier-frost',
+  forge: 'forge-heat',
+  storm: 'storm-sky',
+  temple: 'temple-depths',
+};
 
 const CAST_WINDUP_MS = 100;
 const IMPACT_MS = 350;
@@ -71,7 +82,8 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
   activeAttackerId,
   activeActorId,
   tabletop = false,
-  glacierTurns = 0,
+  shiftArena,
+  shiftTurns = 0,
   lastStandId = null,
   lastStandRoll = null,
   clashRolls = null,
@@ -90,8 +102,8 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
   }, [isAnimatingExchange, pendingResolution]);
 
   useEffect(() => {
-    if (glacierTurns === 2) soundFX.playGlacierRift();
-  }, [glacierTurns]);
+    if (shiftTurns === 2 && shiftArena) soundFX.playArenaShift(shiftArena);
+  }, [shiftArena, shiftTurns]);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -210,6 +222,8 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
         const parried = pendingResolution.defenceOutcome === 'parry';
         const ice = pendingResolution.attackElement === 'ice' && !fumbled;
         const direction = fromLeft ? 1 : -1;
+        const attack = rollPresentation[rollBand(pendingResolution.naturalAttackRoll)];
+        const defence = rollPresentation[rollBand(pendingResolution.naturalDefenceRoll)];
         const warded = pendingResolution.defenceOutcome !== 'full_damage';
         const toX = defenderX - direction * canvas.width * (ice && !warded ? 0 : 0.05);
         const progress = reducedMotion ? 1 : Math.max(0, Math.min(1, (elapsed - CAST_WINDUP_MS) / (IMPACT_MS - CAST_WINDUP_MS)));
@@ -223,7 +237,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
             beamY,
             atkCfg.primaryHex,
             defCfg.primaryHex,
-            fumbled ? 10 : pendingResolution.isUltimate ? 75 : 40,
+            fumbled ? 10 : pendingResolution.isUltimate ? 75 : attack.particles,
             pendingResolution.isUltimate ? 1.6 : 1.1
           );
         }
@@ -253,7 +267,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           ctx.save();
           const shardX = iceReturning ? toX + (fromX - toX) * iceRebound : castEnd;
           ctx.translate(shardX, beamY);
-          ctx.scale(iceReturning ? -direction : direction, 1);
+          ctx.scale((iceReturning ? -direction : direction) * attack.size, attack.size);
           ctx.shadowColor = atkCfg.primaryHex;
           ctx.shadowBlur = 20;
           const trail = ctx.createLinearGradient(-115, 0, 12, 0);
@@ -344,7 +358,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
         }
 
         // Draw Defender's Elemental Barrier at `toX`
-        if (!fumbled && !ice && (reducedMotion || elapsed >= 240)) {
+        if (!fumbled && !ice && warded && (reducedMotion || elapsed >= 240)) {
           ctx.save();
           ctx.translate(toX, beamY);
           ctx.strokeStyle =
@@ -362,7 +376,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
 
           ctx.beginPath();
           const shieldRadius =
-            pendingResolution.defenceOutcome === 'parry' ? 48 : 38;
+            (parried ? 48 : 38) * defence.size;
           const startAngle =
             pendingResolution.attackerId === 'p1'
               ? Math.PI * 0.65
@@ -373,6 +387,12 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
               : Math.PI * 0.35;
           ctx.arc(0, 0, shieldRadius, startAngle, endAngle);
           ctx.stroke();
+          if (defence.size > 1) {
+            ctx.globalAlpha = .48;
+            ctx.beginPath();
+            ctx.arc(0, 0, shieldRadius + 12, startAngle, endAngle);
+            ctx.stroke();
+          }
           ctx.restore();
         }
       }
@@ -467,13 +487,49 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           : ''
       }`}
     >
-      {glacierTurns > 0 && (
+      {shiftArena && shiftTurns > 0 && (
         <>
-          <div aria-hidden="true" className="glacier-frost pointer-events-none absolute inset-0" data-static={reducedMotion} />
+          <div aria-hidden="true" className={`pointer-events-none absolute inset-0 ${arenaBackdrops[shiftArena]}`} data-static={reducedMotion} />
+          {shiftArena === 'temple' && (
+            <svg aria-hidden="true" className="temple-arrival pointer-events-none absolute inset-0 h-full w-full"
+              data-static={reducedMotion} viewBox="0 0 600 260" preserveAspectRatio="none">
+              <path d="M76 211V68h47v143m354 0V68h47v143M249 209v-60a51 51 0 0 1 102 0v60"
+                fill="#123443" stroke="#4e8993" strokeWidth="4" opacity=".65" />
+              <path d="M65 68h68m334 0h68M225 209h150" stroke="#91c6c8" strokeWidth="5" opacity=".55" />
+              <g className="temple-water">
+                <path d="M0 176q50-18 100 0t100 0 100 0 100 0 100 0 100 0v84H0Z" fill="#087eab" fillOpacity=".42" />
+                <path d="M0 176q50-18 100 0t100 0 100 0 100 0 100 0 100 0M0 203q50 13 100 0t100 0 100 0 100 0 100 0 100 0"
+                  fill="none" stroke="#7cecf0" strokeOpacity=".65" strokeWidth="2" />
+                <ellipse cx="300" cy="195" rx="75" ry="12" fill="none" stroke="#cffafe" strokeOpacity=".5" />
+              </g>
+            </svg>
+          )}
+          {shiftArena === 'storm' && (
+            <svg aria-hidden="true" className="storm-spire pointer-events-none absolute inset-0 h-full w-full"
+              data-static={reducedMotion} viewBox="0 0 600 260" preserveAspectRatio="none">
+              <path d="M0 232 155 211 224 225 274 187 286 147 301 99 313 147 327 187 378 224 445 211 600 232V260H0Z"
+                fill="#151331" stroke="#625ba4" strokeWidth="2" />
+              <path className="storm-bolt" d="M347 0 297 49 322 45 288 85 310 78 301 101M310 46l-43-6-24 20m57 11 46-8 22 13"
+                fill="none" stroke="#f5e9ff" strokeWidth="4" strokeLinejoin="round" />
+              <path d="M14 38Q90 15 150 38T286 38M390 47q90-28 194-7"
+                fill="none" stroke="#9289c3" strokeOpacity=".38" strokeWidth="7" strokeLinecap="round" />
+            </svg>
+          )}
+          {shiftArena === 'forge' && (
+            <div aria-hidden="true" className="forge-arrival pointer-events-none absolute inset-0" data-static={reducedMotion}>
+              <svg className="forge-crack" viewBox="0 0 320 100">
+                <path d="m4 69 77-14 29 11 43-19 24 9 38-20 34 11 67-14M153 47l-19-19-23-6m104 14 16-15 44-6M81 55 62 39" fill="none" stroke="#f97316" strokeWidth="8" />
+                <path d="m4 69 77-14 29 11 43-19 24 9 38-20 34 11 67-14" fill="none" stroke="#ffedab" strokeWidth="2" />
+              </svg>
+              {Array.from({ length: 12 }, (_, index) => (
+                <i key={index} className="forge-ember" style={{ left: `${12 + index * 7}%`, animationDelay: `${index * 35}ms` }} />
+              ))}
+            </div>
+          )}
           <div role="status" className="pointer-events-none absolute inset-x-0 bottom-2 z-20 text-center">
             <span className="rounded-full bg-slate-950/90 px-2 py-1 text-xs font-bold text-cyan-100">
-              ❄ Glacier Rift · Ice attack +2 · {glacierTurns === 2 ? '●●' : '●'}
-              <span className="sr-only"> {glacierTurns} exchanges left</span>
+              {SHIFT_ARENAS[shiftArena].icon} {SHIFT_ARENAS[shiftArena].name} · {SHIFT_ARENAS[shiftArena].label} attack +2 · {shiftTurns === 2 ? '●●' : '●'}
+              <span className="sr-only"> {shiftTurns} {shiftTurns === 1 ? 'exchange' : 'exchanges'} left</span>
             </span>
           </div>
         </>

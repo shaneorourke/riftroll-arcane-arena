@@ -1,3 +1,5 @@
+export type ArenaId = 'glacier' | 'forge' | 'storm' | 'temple';
+
 export type ElementSchool =
   | 'fire'
   | 'water'
@@ -173,6 +175,7 @@ export interface MatchState {
   firstBattleStarter: PlayerId;
   activeAttackerId: PlayerId;
   glacierRiftStartedOn?: number;
+  arenaShift?: { id: ArenaId; startedOn: number };
   selectedAttackElement: ElementSchool | null;
   selectedUseUltimate: boolean;
   selectedDefenceElement: ElementSchool | null;

@@ -18,8 +18,8 @@ import {
   createInitialMatchState,
   selectAttackMagic,
   selectDefenceMagic,
-  openGlacierRift,
-  glacierRiftRemaining,
+  openArenaShift,
+  arenaShiftRemaining,
   startNextBattle,
   submitArcaneClashRolls,
   submitAttackRoll,
@@ -466,8 +466,8 @@ export function runCombatEngineTestSuite(): TestCaseResult[] {
     `Blocked Ice: ${blocked === nextCast}; AI avoids Ice: ${aiAvoidsLock}`
   );
 
-  const glacier = openGlacierRift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'));
-  const resolveGlacierTurn = (state: typeof glacier, element: 'ice' | 'fire') => {
+  const glacier = openArenaShift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'), 'glacier');
+  const resolveGlacierTurn = (state: typeof glacier, element: 'ice' | 'fire' | 'lightning' | 'water') => {
     const attack = selectAttackMagic(state, element, false);
     const defence = selectDefenceMagic(attack, 'light');
     return submitDefenceRoll(submitAttackRoll(defence, 12), 8);
@@ -481,15 +481,57 @@ export function runCombatEngineTestSuite(): TestCaseResult[] {
     'glacier-rift',
     'Match Progression',
     'Glacier Rift boosts Ice attacks for two exchanges and can open once per battle',
-    glacierRiftRemaining(glacier) === 2 &&
+    arenaShiftRemaining(glacier) === 2 &&
       iceExchange.pendingResolution?.effectiveAttackRoll === 14 &&
       iceExchange.pendingResolution?.naturalAttackRoll === 12 &&
-      glacierRiftRemaining(secondExchange) === 1 &&
+      arenaShiftRemaining(secondExchange) === 1 &&
       fireExchange.pendingResolution?.effectiveAttackRoll === 12 &&
-      glacierRiftRemaining(expired) === 0 &&
-      openGlacierRift(expired) === expired &&
-      glacierRiftRemaining(openGlacierRift(nextBattle)) === 2,
+      arenaShiftRemaining(expired) === 0 &&
+      openArenaShift(expired, 'forge') === expired &&
+      arenaShiftRemaining(openArenaShift(nextBattle, 'forge')) === 2,
     'Ice +2, Fire +0, two exchanges, resets for next battle'
+  );
+
+  const forge = openArenaShift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'), 'forge');
+  const legacyGlacier = { ...forge, arenaShift: undefined, glacierRiftStartedOn: 1 };
+  assertTest(
+    'ember-forge',
+    'Match Progression',
+    'Ember Forge boosts Fire and shares the once-per-battle arena shift limit',
+    resolveGlacierTurn(forge, 'fire').pendingResolution?.effectiveAttackRoll === 14 &&
+      resolveGlacierTurn(forge, 'ice').pendingResolution?.effectiveAttackRoll === 12 &&
+      openArenaShift(forge, 'glacier') === forge &&
+      resolveGlacierTurn(legacyGlacier, 'ice').pendingResolution?.effectiveAttackRoll === 14,
+    'Fire +2, Ice +0, shared limit, saved Glacier Rift still boosts Ice'
+  );
+
+  const storm = openArenaShift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'), 'storm');
+  assertTest(
+    'storm-spire',
+    'Match Progression',
+    'Storm Spire boosts Lightning attacks for both players and expires after two exchanges',
+    resolveGlacierTurn(storm, 'lightning').pendingResolution?.effectiveAttackRoll === 14 &&
+      resolveGlacierTurn(storm, 'fire').pendingResolution?.effectiveAttackRoll === 12 &&
+      resolveGlacierTurn(completeExchangeAnimation(resolveGlacierTurn(storm, 'lightning')), 'lightning')
+        .pendingResolution?.effectiveAttackRoll === 14 &&
+      arenaShiftRemaining(completeExchangeAnimation(resolveGlacierTurn(
+        completeExchangeAnimation(resolveGlacierTurn(storm, 'lightning')), 'lightning'
+      ))) === 0,
+    'Lightning +2 for both players, Fire +0, expires after two exchanges'
+  );
+
+  const temple = openArenaShift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'), 'temple');
+  const templeSecond = completeExchangeAnimation(resolveGlacierTurn(temple, 'water'));
+  const templeLast = resolveGlacierTurn(templeSecond, 'water');
+  assertTest(
+    'flooded-temple',
+    'Match Progression',
+    'Flooded Temple boosts Water attacks for both players for two exchanges',
+    resolveGlacierTurn(temple, 'water').pendingResolution?.effectiveAttackRoll === 14 &&
+      resolveGlacierTurn(temple, 'ice').pendingResolution?.effectiveAttackRoll === 12 &&
+      templeLast.pendingResolution?.effectiveAttackRoll === 14 &&
+      arenaShiftRemaining(completeExchangeAnimation(templeLast)) === 0,
+    'Water +2 for both players, Ice +0, expires after two exchanges'
   );
 
   return results;

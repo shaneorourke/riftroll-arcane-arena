@@ -9,7 +9,7 @@ Run `npm run dev`, then open **Online Rooms → Host a duel**. Share the invite 
 
 For a built copy, run `npm run build` and `npm start`. The server listens on localhost port 3002 by default. Set `PORT` and `RIFTROLL_HOST` to match your host. For phone testing on the same network, run Vite with a reachable LAN address and open that address on both devices.
 
-Rooms live in memory on one server process and expire an hour after creation. Restarting the server clears them. Internet play requires deploying this server and serving the game over HTTPS.
+Rooms expire an hour after creation. The standalone server saves rooms in `.riftroll-rooms/` by default. Set `RIFTROLL_ROOM_DATA_DIR` to a persistent volume when deploying and use one server process per directory. Vite uses in-memory rooms by default. Internet play requires deploying this server and serving the game over HTTPS.
 
 ---
 
