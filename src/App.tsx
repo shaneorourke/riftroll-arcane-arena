@@ -66,6 +66,7 @@ type ScreenView = 'MENU' | 'BATTLE' | 'ONLINE_LOBBY' | 'SETTINGS' | 'HOW_TO_PLAY
 
 export default function App() {
   const [view, setView] = useState<ScreenView>('MENU');
+  const [hasStartedMatch, setHasStartedMatch] = useState(false);
 
   const [settings, setSettings] = useState<MatchSettings>({
     mode: 'solo',
@@ -98,8 +99,15 @@ export default function App() {
     soundFX.enabled = settings.soundEnabled;
   }, [settings.soundEnabled]);
 
+  const canResumeMatch = hasStartedMatch && matchState.phase !== 'MATCH_OVER';
+
   // Launch a fresh match with the chosen mode & settings
   const launchNewMatch = (overrideSettings?: Partial<MatchSettings>) => {
+    if (canResumeMatch && !window.confirm('Start a new match? Your current match will end.')) {
+      return;
+    }
+
+    setHasStartedMatch(true);
     const merged: MatchSettings = { ...settings, ...overrideSettings };
     setSettings(merged);
     const fresh = createInitialMatchState(merged);
@@ -306,11 +314,13 @@ export default function App() {
             onClick={() =>
               view === 'BATTLE'
                 ? setView('MENU')
+                : canResumeMatch
+                ? setView('BATTLE')
                 : launchNewMatch({ mode: settings.mode })
             }
             className="px-4 py-2 text-xs font-bold text-slate-950 bg-amber-400 rounded-lg hover:bg-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
-            {view === 'BATTLE' ? 'Arena Menu' : 'Enter Arena'}
+            {view === 'BATTLE' ? 'Arena Menu' : canResumeMatch ? 'Resume Match' : 'Enter Arena'}
           </button>
         </div>
       </header>
