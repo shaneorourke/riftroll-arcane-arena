@@ -1,3 +1,4 @@
+import { ExitMatchDialog } from './components/ExitMatchDialog';
 import { OnlineDuel } from './components/OnlineDuel';
 import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
@@ -65,6 +66,7 @@ type ScreenView = 'MENU' | 'BATTLE' | 'ONLINE_LOBBY' | 'SETTINGS' | 'HOW_TO_PLAY
 
 export default function App() {
   const [view, setView] = useState<ScreenView>(() => new URLSearchParams(location.search).has('room') ? 'ONLINE_LOBBY' : 'MENU');
+  const [confirmExit, setConfirmExit] = useState(false);
   const [hasStartedMatch, setHasStartedMatch] = useState(false);
 
   useEffect(() => {
@@ -125,10 +127,7 @@ export default function App() {
   };
 
   const exitMatch = () => {
-    if (canResumeMatch && !window.confirm('Exit this match? Your progress in this match will be lost.')) {
-      return;
-    }
-
+    setConfirmExit(false);
     setHasStartedMatch(false);
     setArmedUltimateDraft(false);
     setClashRolls({});
@@ -359,10 +358,10 @@ export default function App() {
 
         {/* Zone 3: 1 primary action */}
         <div className="flex items-center gap-3 shrink-0">
-          {canResumeMatch && (
+          {canResumeMatch && view !== 'ONLINE_LOBBY' && (
             <button
               type="button"
-              onClick={exitMatch}
+              onClick={() => setConfirmExit(true)}
               className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-2 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800 sm:px-3"
             >
               <LogOut aria-hidden="true" className="size-3.5" />
@@ -1205,6 +1204,7 @@ export default function App() {
           </div>
         )}
       </main>
+      {confirmExit && <ExitMatchDialog onCancel={() => setConfirmExit(false)} onExit={exitMatch} />}
     </div>
   );
 }

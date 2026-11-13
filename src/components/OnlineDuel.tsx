@@ -1,3 +1,4 @@
+import { ExitMatchDialog } from './ExitMatchDialog';
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
 import { ArenaStage } from './ArenaStage';
@@ -28,6 +29,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
   const [connection, setConnection] = useState('');
   const [busy, setBusy] = useState(false);
   const [ultimate, setUltimate] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
   const [copied, setCopied] = useState(false);
   const [playback, setPlayback] = useState<RoomSnapshot['playback']>();
   const prefersReducedMotion = useReducedMotion();
@@ -111,8 +113,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
   }
 
   function leave() {
-    if (!seat || (room?.ready && room.match.phase !== 'MATCH_OVER' &&
-      !window.confirm('Leave this duel? Your seat will be cleared from this tab.'))) return;
+    if (!seat) return;
     sessionStorage.removeItem(seatKey(seat.code));
     sessionStorage.removeItem(roomKey);
     const url = new URL(location.href);
@@ -127,6 +128,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
     setConnection('');
     setCopied(false);
     setUltimate(false);
+    setConfirmExit(false);
   }
 
   function act(intent: DuelIntent) {
@@ -159,8 +161,11 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Private duel</h1>
         <div className="flex flex-wrap gap-2">
-          {seat && <button disabled={busy} className="rounded-lg bg-slate-800 px-3 py-2" onClick={leave}>
-            {phase === 'MATCH_OVER' ? 'New duel' : 'Leave room'}
+          {seat && <button disabled={busy} className="rounded-lg bg-slate-800 px-3 py-2" onClick={() => {
+            if (phase === 'MATCH_OVER') leave();
+            else setConfirmExit(true);
+          }}>
+            {phase === 'MATCH_OVER' ? 'New duel' : 'Exit Match'}
           </button>}
           <button className="rounded-lg bg-slate-800 px-3 py-2" onClick={onClose}>Arena Menu</button>
         </div>
@@ -223,6 +228,10 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
           {!playback && state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
         </>
       )}
+      {confirmExit && <ExitMatchDialog onCancel={() => setConfirmExit(false)} onExit={() => {
+        leave();
+        onClose();
+      }} />}
     </section>
   );
 }
