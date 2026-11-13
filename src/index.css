@@ -182,3 +182,86 @@
 }
 
 .ice-ward[data-static="true"] * { animation: none; }
+
+.clash-beam {
+  position: absolute;
+  top: 48%;
+  width: 28%;
+  height: 9px;
+  translate: 0 -50%;
+  border-radius: 100%;
+  background: linear-gradient(90deg, currentColor, #f5e8ff);
+  box-shadow: 0 0 18px currentColor;
+}
+
+.clash-beam-left { left: 22%; }
+.clash-beam-right { right: 22%; scale: -1 1; }
+
+.clash-core {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  width: clamp(38px, 10vw, 78px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 8%, #e9a8ff 28%, #a855f7 48%, transparent 72%);
+  filter: drop-shadow(0 0 14px #c084fc);
+  animation: clash-pulse 900ms ease-in-out infinite alternate;
+}
+
+.clash-core[data-result="p1"] { animation: clash-left 650ms ease-in both; }
+.clash-core[data-result="p2"] { animation: clash-right 650ms ease-in both; }
+.clash-core[data-result="tie"] { animation: clash-tie 650ms ease-out both; }
+
+.clash-core[data-static="true"] { animation: none; }
+.clash-core[data-static="true"][data-result="p1"] { left: 22%; }
+.clash-core[data-static="true"][data-result="p2"] { left: 78%; }
+.clash-core[data-static="true"][data-result="tie"] { scale: 2; }
+
+@keyframes clash-pulse { from { scale: .76; } to { scale: 1.12; } }
+@keyframes clash-left { to { left: 22%; scale: 1.65; } }
+@keyframes clash-right { to { left: 78%; scale: 1.65; } }
+@keyframes clash-tie { to { scale: 4; opacity: 0; } }
+
+.last-stand-aura {
+  top: 48%;
+  width: clamp(74px, 15vw, 130px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border: 2px solid #fda4af;
+  border-radius: 50%;
+  box-shadow: 0 0 24px #f43f5e99, inset 0 0 20px #f43f5e66;
+  animation: last-stand-pulse 850ms ease-in-out infinite alternate;
+}
+
+.last-stand-aura[data-result="saved"] {
+  border-color: #fde68a;
+  box-shadow: 0 0 34px #fbbf24bb, inset 0 0 18px #fbbf2488;
+  animation: last-stand-revive 600ms ease-out both;
+}
+
+.last-stand-aura[data-result="fallen"] {
+  border-style: dashed;
+  animation: last-stand-fall 600ms ease-out both;
+}
+
+.last-stand-counter {
+  top: 48%;
+  left: 22%;
+  width: 56%;
+  height: 8px;
+  border-radius: 100%;
+  background: #fef3c7;
+  box-shadow: 0 0 22px #fbbf24;
+  transform-origin: left;
+  animation: last-stand-strike 600ms ease-out both;
+}
+
+.last-stand-counter[data-from="p2"] { transform-origin: right; }
+.last-stand-aura[data-static="true"], .last-stand-counter[data-static="true"] { animation: none; }
+
+@keyframes last-stand-pulse { from { scale: .9; opacity: .6; } to { scale: 1.05; opacity: 1; } }
+@keyframes last-stand-revive { 0% { scale: .7; } 40% { scale: 1.22; } 100% { scale: 1; } }
+@keyframes last-stand-fall { to { opacity: .15; scale: .72; } }
+@keyframes last-stand-strike { 0% { scale: 0 1; } 45% { scale: 1; opacity: 1; } 100% { opacity: 0; } }

@@ -159,7 +159,7 @@ export interface MatchSettings {
   localLayout: LocalLayoutMode;
   reducedMotion: boolean;
   soundEnabled: boolean;
-  defenceLockout?: boolean;
+  playerNames?: Partial<Record<PlayerId, string>>;
 }
 
 export interface MatchState {

@@ -16,9 +16,7 @@ import {
 } from 'lucide-react';
 import { ArenaStage } from './components/ArenaStage';
 import {
-  ArcaneClashOverlay,
   BattleResultsOverlay,
-  LastStandOverlay,
 } from './components/BattleModals';
 import { DiceRoller } from './components/DiceRoller';
 import { ElementIcon } from './components/ElementIcon';
@@ -93,6 +91,8 @@ export default function App() {
   );
 
   // Local toggle state for Attacker's Ultimate button before selecting the element
+  const [lastStandRoll, setLastStandRoll] = useState<number | null>(null);
+  const [clashRolls, setClashRolls] = useState<Partial<Record<PlayerId, number>>>({});
   const [armedUltimateDraft, setArmedUltimateDraft] = useState(false);
 
   useEffect(() => {
@@ -112,6 +112,8 @@ export default function App() {
     setSettings(merged);
     const fresh = createInitialMatchState(merged);
     setMatchState(fresh);
+    setClashRolls({});
+    setLastStandRoll(null);
     setArmedUltimateDraft(false);
     setView('BATTLE');
     soundFX.playSelectMagic();
@@ -146,7 +148,7 @@ export default function App() {
         const defElement = chooseAIDefenceElement(
           matchState.selectedAttackElement!,
           matchState.settings.aiDifficulty,
-          matchState.settings.defenceLockout ? defender.defenceLock : undefined
+          defender.defenceLock
         );
         soundFX.playSelectMagic();
         setMatchState((prev) => selectDefenceMagic(prev, defElement));
@@ -247,12 +249,40 @@ export default function App() {
     matchState.settings.mode === 'local' &&
     matchState.settings.localLayout === 'tabletop';
 
+  const lastStandId = matchState.phase === 'LAST_STAND_PROMPT'
+    ? matchState.pendingLastStandPlayerId
+    : null;
+  const isClash = matchState.phase === 'ARCANE_CLASH_ROLL';
+  const { p1: clashP1, p2: clashP2 } = clashRolls;
+  const clashActor = clashP1 === undefined ? 'p1' : clashP2 === undefined ? 'p2' : null;
   const activeActorId =
-    matchState.phase === 'SELECT_ATTACK_MAGIC' || matchState.phase === 'ROLL_ATTACK_D20'
+    lastStandId ? (lastStandRoll === null ? lastStandId : null)
+      : isClash ? clashActor
+      : matchState.phase === 'SELECT_ATTACK_MAGIC' || matchState.phase === 'ROLL_ATTACK_D20'
       ? attackerId
       : matchState.phase === 'SELECT_DEFENCE_MAGIC' || matchState.phase === 'ROLL_DEFENCE_D20'
       ? defenderId
       : null;
+
+  useEffect(() => {
+    if (view !== 'BATTLE' || !isClash || clashP1 === undefined || clashP2 === undefined) return;
+    soundFX.playParryOrClash();
+    const timer = window.setTimeout(() => {
+      setMatchState((state) => submitArcaneClashRolls(state, clashP1, clashP2));
+      setClashRolls({});
+    }, matchState.settings.reducedMotion ? 650 : 950);
+    return () => window.clearTimeout(timer);
+  }, [view, isClash, clashP1, clashP2, matchState.settings.reducedMotion]);
+
+  useEffect(() => {
+    if (view !== 'BATTLE' || !lastStandId || lastStandRoll === null) return;
+    const timer = window.setTimeout(() => {
+      setMatchState((state) => submitLastStandRoll(state, lastStandRoll));
+      setLastStandRoll(null);
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [view, lastStandId, lastStandRoll]);
+
   const controlsAtTop = isTabletopRotated && activeActorId === 'p2';
 
   return (
@@ -432,6 +462,30 @@ export default function App() {
                       )}
                     </button>
                   </div>
+
+                  <fieldset className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <legend className="mb-2 text-sm font-semibold text-white">Mage names</legend>
+                    {(['p1', 'p2'] as const).map((id) => (
+                      <label key={id} className="text-xs text-slate-300">
+                        {id === 'p1' ? 'Player 1' : 'Player 2 (local duel)'}
+                        <input
+                          type="text"
+                          maxLength={24}
+                          autoComplete="off"
+                          placeholder={id === 'p1' ? 'Archmage Kaelen' : 'Magister Lyra'}
+                          value={settings.playerNames?.[id] ?? ''}
+                          onChange={(event) => {
+                            const name = event.currentTarget.value;
+                            setSettings((current) => ({
+                              ...current,
+                              playerNames: { ...current.playerNames, [id]: name },
+                            }));
+                          }}
+                          className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+                        />
+                      </label>
+                    ))}
+                  </fieldset>
 
                   <div className="space-y-3.5 text-xs">
                     {/* Match Length */}
@@ -810,6 +864,9 @@ export default function App() {
                 activeAttackerId={matchState.activeAttackerId}
                 activeActorId={activeActorId}
                 tabletop={isTabletopRotated}
+                clashRolls={isClash ? clashRolls : null}
+                lastStandId={lastStandId}
+                lastStandRoll={lastStandRoll}
                 selectedAttackElement={matchState.selectedAttackElement}
                 selectedDefenceElement={matchState.selectedDefenceElement}
                 selectedUseUltimate={
@@ -849,6 +906,38 @@ export default function App() {
                 <div
                   className={`rounded-xl ring-1 ring-amber-400/50 ${controlsAtTop ? 'order-first rotate-180' : ''}`}
                 >
+                  {lastStandId && (
+                    <DiceRoller
+                      key="last-stand"
+                      diceMode={matchState.settings.diceMode}
+                      roleLabel="Last Stand"
+                      targetRoll={20}
+                      playerName={matchState.players[lastStandId].name}
+                      accentHex="#f43f5e"
+                      autoRollForAI={matchState.players[lastStandId].isAI}
+                      reducedMotion={matchState.settings.reducedMotion}
+                      onRollConfirmed={(roll) => {
+                        if (roll === 20) soundFX.playParryOrClash();
+                        else soundFX.playSpellImpact(true);
+                        setLastStandRoll(roll);
+                      }}
+                    />
+                  )}
+
+                  {isClash && clashActor && (
+                    <DiceRoller
+                      key={clashActor}
+                      diceMode={matchState.settings.diceMode}
+                      roleLabel="Arcane Clash"
+                      rollLabel="Roll again"
+                      playerName={matchState.players[clashActor].name}
+                      accentHex={matchState.players[clashActor].avatarColor}
+                      autoRollForAI={matchState.players[clashActor].isAI}
+                      reducedMotion={matchState.settings.reducedMotion}
+                      onRollConfirmed={(roll) => setClashRolls((current) => ({ ...current, [clashActor]: roll }))}
+                    />
+                  )}
+
                   {matchState.phase === 'SELECT_ATTACK_MAGIC' && (
                     <SpellSelector
                       mode="attack"
@@ -868,7 +957,7 @@ export default function App() {
                       arcaneMeter={defender.arcaneMeter}
                       useUltimate={false}
                       opposingAttackElement={matchState.selectedAttackElement}
-                      lockedElement={matchState.settings.defenceLockout ? defender.defenceLock : undefined}
+                      lockedElement={defender.defenceLock}
                       disabled={defender.isAI}
                       onSelectElement={handleSelectDefence}
                     />
@@ -953,32 +1042,6 @@ export default function App() {
             )}
 
             {/* Special Event & Battle Over Modals */}
-            {matchState.phase === 'ARCANE_CLASH_ROLL' && (
-              <ArcaneClashOverlay
-                state={matchState}
-                onSubmitClashRolls={(p1Roll, p2Roll) => {
-                  soundFX.playParryOrClash();
-                  setMatchState((prev) =>
-                    submitArcaneClashRolls(prev, p1Roll, p2Roll)
-                  );
-                }}
-              />
-            )}
-
-            {matchState.phase === 'LAST_STAND_PROMPT' && (
-              <LastStandOverlay
-                state={matchState}
-                onSubmitLastStandRoll={(roll) => {
-                  if (roll === 20) {
-                    soundFX.playParryOrClash();
-                  } else {
-                    soundFX.playSpellImpact(true);
-                  }
-                  setMatchState((prev) => submitLastStandRoll(prev, roll));
-                }}
-              />
-            )}
-
             {(matchState.phase === 'BATTLE_OVER' ||
               matchState.phase === 'MATCH_OVER') && (
               <BattleResultsOverlay
@@ -1025,22 +1088,6 @@ export default function App() {
               </div>
 
               <div className="space-y-4 divide-y divide-slate-800 text-sm">
-                <div className="flex items-center justify-between gap-4 py-3">
-                  <div>
-                    <div className="font-semibold text-white">Spell recharge</div>
-                    <p className="text-xs text-slate-400">Your attack spell rests during your next defence. Applies to new matches.</p>
-                  </div>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-label="Spell recharge"
-                    aria-checked={settings.defenceLockout === true}
-                    onClick={() => setSettings((current) => ({ ...current, defenceLockout: !current.defenceLockout }))}
-                    className="rounded-lg bg-slate-800 px-4 py-2 text-xs font-bold text-white"
-                  >
-                    {settings.defenceLockout ? 'On' : 'Off'}
-                  </button>
-                </div>
                 <div className="pt-3 flex items-center justify-between gap-4">
                   <div>
                     <div className="font-semibold text-white">

@@ -446,7 +446,7 @@ export function runCombatEngineTestSuite(): TestCaseResult[] {
     `Sorcerer saves before match point: ${savesBeforeMatchPoint}; spends at match point: ${spendsAtMatchPoint}`
   );
 
-  const rechargeMatch = createInitialMatchState({ ...DEFAULT_SETTINGS, defenceLockout: true }, 'p1');
+  const rechargeMatch = createInitialMatchState(DEFAULT_SETTINGS, 'p1');
   const firstCast = selectAttackMagic(rechargeMatch, 'ice', false);
   const firstDefence = selectDefenceMagic(firstCast, 'ice');
   const nextTurn = completeExchangeAnimation(submitDefenceRoll(submitAttackRoll(firstDefence, 4), 12));

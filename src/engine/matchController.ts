@@ -26,7 +26,7 @@ export function createInitialMatchState(
 
   const p1: PlayerState = {
     id: 'p1',
-    name: 'Archmage Kaelen',
+    name: settings.playerNames?.p1?.trim() || 'Archmage Kaelen',
     title: 'Scion of the Astral Rift',
     isAI: false,
     hp: settings.maxHp,
@@ -39,7 +39,7 @@ export function createInitialMatchState(
 
   const p2: PlayerState = {
     id: 'p2',
-    name: settings.mode === 'solo' ? getAIName(settings.aiDifficulty) : 'Magister Lyra',
+    name: settings.mode === 'solo' ? getAIName(settings.aiDifficulty) : settings.playerNames?.p2?.trim() || 'Magister Lyra',
     title: settings.mode === 'solo' ? getAITitle(settings.aiDifficulty) : 'Warden of the Obsidian Spire',
     isAI: settings.mode === 'solo',
     hp: settings.maxHp,
@@ -114,7 +114,7 @@ export function selectAttackMagic(
     ...state,
     players: {
       ...state.players,
-      [attacker.id]: { ...attacker, defenceLock: state.settings.defenceLockout ? element : undefined },
+      [attacker.id]: { ...attacker, defenceLock: element },
     },
     selectedAttackElement: element,
     selectedUseUltimate: validUltimate,
@@ -132,7 +132,7 @@ export function selectDefenceMagic(
 
   const defenderId = state.activeAttackerId === 'p1' ? 'p2' : 'p1';
   const defender = state.players[defenderId];
-  if (state.settings.defenceLockout && defender.defenceLock === element) {
+  if (defender.defenceLock === element) {
     return state;
   }
 

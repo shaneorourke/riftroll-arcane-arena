@@ -7,6 +7,8 @@ import { soundFX } from '../utils/sound';
 interface DiceRollerProps {
   diceMode: DiceMode;
   roleLabel: string;
+  rollLabel?: string;
+  targetRoll?: number;
   playerName: string;
   accentHex: string;
   modifier?: number;
@@ -19,6 +21,8 @@ interface DiceRollerProps {
 export const DiceRoller: React.FC<DiceRollerProps> = ({
   diceMode,
   roleLabel,
+  rollLabel = 'Roll',
+  targetRoll,
   playerName,
   accentHex,
   modifier = 0,
@@ -107,8 +111,8 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
       <div className="flex items-center justify-between gap-4 mb-3">
         <div>
           <div className="text-xs text-slate-400">{playerName}</div>
-          {diceMode === 'physical' && !autoRollForAI && (
-            <h4 className="text-base font-bold text-white">Tap your roll</h4>
+          {(targetRoll !== undefined || (diceMode === 'physical' && !autoRollForAI)) && (
+            <h4 className="text-base font-bold text-white">{targetRoll !== undefined ? `Roll ${targetRoll} to survive` : rollLabel === 'Roll' ? 'Tap your roll' : rollLabel}</h4>
           )}
         </div>
         {modifier !== 0 && (
@@ -195,7 +199,7 @@ export const DiceRoller: React.FC<DiceRollerProps> = ({
                     ? 'Rolling…'
                     : isRolling
                     ? 'Rolling…'
-                    : 'Roll'}
+                    : rollLabel}
                 </span>
               </button>
             )}

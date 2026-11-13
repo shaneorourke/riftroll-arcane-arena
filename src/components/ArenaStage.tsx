@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Sparkles, FastForward, Shield, CornerUpLeft, X } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
+import { LAST_STAND_COUNTER_DAMAGE, resolveArcaneClash } from '../engine/combatEngine';
 import { ELEMENT_SCHOOLS } from '../engine/elements';
 import {
   ElementSchool,
@@ -17,6 +18,9 @@ interface ArenaStageProps {
   activeAttackerId: PlayerId;
   activeActorId: PlayerId | null;
   tabletop?: boolean;
+  lastStandId?: PlayerId | null;
+  lastStandRoll?: number | null;
+  clashRolls?: Partial<Record<PlayerId, number>> | null;
   selectedAttackElement: ElementSchool | null;
   selectedDefenceElement: ElementSchool | null;
   selectedUseUltimate: boolean;
@@ -65,6 +69,9 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
   activeAttackerId,
   activeActorId,
   tabletop = false,
+  lastStandId = null,
+  lastStandRoll = null,
+  clashRolls = null,
   selectedAttackElement,
   selectedDefenceElement,
   selectedUseUltimate,
@@ -430,6 +437,15 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
     </div>
   );
 
+  const clashP1 = clashRolls?.p1;
+  const clashP2 = clashRolls?.p2;
+  const clash = clashP1 !== undefined && clashP2 !== undefined
+    ? resolveArcaneClash(clashP1, clashP2, p1, p2)
+    : null;
+  const clashResult = clash?.winnerId === 'tie' ? 'tie'
+    : clash?.winnerId === 'p1' ? 'p2'
+    : clash?.winnerId === 'p2' ? 'p1' : null;
+
   return (
     <div
       className={`relative w-full h-64 sm:h-76 rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-[#131026] via-[#0d0b1a] to-[#080711] shadow-2xl ${
@@ -441,7 +457,61 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
       }`}
     >
       {resolution && <SignatureSpell resolution={resolution} reducedMotion={reducedMotion} />}
-      <div role="status" className="sr-only">{resolution?.summaryText}</div>
+      {clashRolls && (
+        <>
+          <div className="pointer-events-none absolute inset-0 z-[1]" aria-hidden="true">
+            <div className="clash-beam clash-beam-left" style={{ color: p1AuraHex }} />
+            <div className="clash-beam clash-beam-right" style={{ color: p2AuraHex }} />
+            <div className="clash-core" data-result={clashResult ?? 'pending'} data-static={reducedMotion} />
+            {(['p1', 'p2'] as const).map((id) => (
+              <div key={id} className={`absolute bottom-5 -translate-x-1/2 rounded-full border border-violet-400/60 bg-slate-950 px-2 py-1 font-mono text-sm font-bold text-white ${id === 'p1' ? 'left-[22%]' : 'left-[78%]'} ${tabletop && id === 'p2' ? 'rotate-180' : ''}`}>
+                {clashRolls[id] ?? '–'}
+                {(clashResult === id || clashResult === 'tie') && (
+                  <span className="ml-2 text-rose-200">−{id === 'p1' ? clash?.damageToP1 : clash?.damageToP2}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          <h2 className="pointer-events-none absolute inset-x-0 top-2 z-10 text-center text-sm font-bold text-violet-200">
+            Arcane Clash
+          </h2>
+        </>
+      )}
+      {lastStandId && (
+        <>
+          <div
+            aria-hidden="true"
+            className="last-stand-aura pointer-events-none absolute z-[11]"
+            data-static={reducedMotion}
+            data-result={lastStandRoll === null ? 'pending' : lastStandRoll === 20 ? 'saved' : 'fallen'}
+            style={{ left: lastStandId === 'p1' ? '22%' : '78%' }}
+          />
+          {lastStandRoll === 20 && (
+            <div aria-hidden="true" className="last-stand-counter pointer-events-none absolute z-[1]"
+              data-static={reducedMotion} data-from={lastStandId} />
+          )}
+          <div className="pointer-events-none absolute inset-x-0 top-2 z-10 text-center">
+            <h2 className="text-sm font-bold text-rose-200">Last Stand</h2>
+            {lastStandRoll !== null && (
+              <p className="text-sm font-bold text-white">
+                {lastStandRoll === 20 ? '20 · 1 HP' : `${lastStandRoll} · Fallen`}
+              </p>
+            )}
+          </div>
+          {lastStandRoll === 20 && (
+            <span aria-hidden="true" className={`pointer-events-none absolute bottom-5 z-10 -translate-x-1/2 rounded-full border border-rose-400/60 bg-slate-950 px-2 py-1 text-sm font-bold text-rose-200 ${lastStandId === 'p1' ? 'left-[78%]' : 'left-[22%]'}`}>
+              −{LAST_STAND_COUNTER_DAMAGE}
+            </span>
+          )}
+        </>
+      )}
+      <div role="status" className="sr-only">{
+        lastStandId && lastStandRoll !== null
+          ? lastStandRoll === 20
+            ? `Survived at 1 HP. Counterattack for ${LAST_STAND_COUNTER_DAMAGE} damage.`
+            : `Rolled ${lastStandRoll}. Last Stand failed.`
+          : clash?.summaryText ?? resolution?.summaryText
+      }</div>
       {/* Interactive Canvas Particle & Spell Beam Layer */}
       <canvas
         ref={canvasRef}
@@ -454,7 +524,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
       {/* Top Arena Status Banner */}
       <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 pt-3 text-xs text-slate-300">
         <div className="flex items-center gap-2">
-          {activeActorId && (
+          {activeActorId && !clashRolls && !lastStandId && (
             <span className="font-semibold text-amber-300">
               {activeActorId === 'p1' && p2.isAI ? 'Your turn' : `${activeActorId === 'p1' ? p1.name : p2.name}’s turn`}
             </span>
