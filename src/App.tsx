@@ -183,18 +183,6 @@ export default function App() {
     if (view !== 'BATTLE' || matchState.phase !== 'ANIMATING_EXCHANGE') return;
 
     const res = matchState.pendingResolution;
-    if (res) {
-      if (res.defenceOutcome === 'parry') {
-        soundFX.playParryOrClash();
-      } else {
-        soundFX.playSpellImpact(
-          res.isUltimate ||
-            res.attackTier === 'critical_strike' ||
-            res.attackTier === 'devastating'
-        );
-      }
-    }
-
     const duration = matchState.settings.reducedMotion
       ? 450
       : res?.isUltimate || res?.attackTier === 'critical_strike'

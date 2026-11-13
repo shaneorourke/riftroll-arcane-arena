@@ -1,3 +1,4 @@
+import { soundFX } from '../utils/sound';
 import { ExitMatchDialog } from './ExitMatchDialog';
 import { useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'motion/react';
@@ -38,6 +39,11 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
 
   useEffect(() => {
     if (!playback) return;
+    if (playback.kind === 'clash' || (playback.kind === 'last-stand' && playback.roll === 20)) {
+      soundFX.playParryOrClash();
+    } else if (playback.kind === 'last-stand') {
+      soundFX.playSpellImpact(true);
+    }
     const duration = playback.kind === 'exchange'
       ? reducedMotion ? 450 : playback.resolution.isUltimate || playback.resolution.attackTier === 'critical_strike' ? 2100 : 1500
       : reducedMotion ? 650 : 950;
@@ -99,6 +105,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
   }
 
   function enter(join: boolean) {
+    soundFX.unlock();
     return run(async () => {
       const result = join ? await multiplayerTransport.join(code.trim().toUpperCase()) : await multiplayerTransport.create();
       const { token, ...snapshot } = result;
@@ -133,6 +140,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
 
   function act(intent: DuelIntent) {
     if (!seat || !room || busy || connection || playback) return;
+    soundFX.unlock();
     void run(async () => {
       update(await multiplayerTransport.act(seat, room.revision, intent));
       setUltimate(false);

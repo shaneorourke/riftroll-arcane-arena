@@ -265,3 +265,55 @@
 @keyframes last-stand-revive { 0% { scale: .7; } 40% { scale: 1.22; } 100% { scale: 1; } }
 @keyframes last-stand-fall { to { opacity: .15; scale: .72; } }
 @keyframes last-stand-strike { 0% { scale: 0 1; } 45% { scale: 1; opacity: 1; } 100% { opacity: 0; } }
+
+.signature-water, .signature-earth, .signature-lightning,
+.signature-wind, .signature-dark, .signature-light {
+  animation-name: elemental-impact;
+  animation-duration: 850ms;
+  filter: drop-shadow(0 0 12px currentColor);
+}
+
+.signature-earth { animation-name: earth-impact; }
+.signature-wind { animation-name: wind-impact; }
+.signature-dark { animation-name: dark-impact; }
+.signature-lightning { animation-duration: 550ms; }
+
+@keyframes elemental-impact {
+  0% { opacity: 0; scale: .35; }
+  22%, 54% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.22; }
+}
+@keyframes earth-impact {
+  0% { opacity: 0; scale: 1 .18; }
+  20%, 64% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1; }
+}
+@keyframes wind-impact {
+  0% { opacity: 0; scale: .45; rotate: -35deg; }
+  32% { opacity: 1; }
+  100% { opacity: 0; scale: 1.38; rotate: 30deg; }
+}
+@keyframes dark-impact {
+  0% { opacity: 0; scale: 1.25; rotate: -22deg; }
+  40% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: .35; rotate: 40deg; }
+}
+
+.element-ultimate {
+  box-shadow: inset 0 0 85px -24px currentColor;
+  background: radial-gradient(ellipse, transparent 48%, color-mix(in srgb, currentColor 32%, transparent));
+  animation: ultimate-edge 1400ms ease-out both;
+}
+.element-ultimate-fire { background: linear-gradient(0deg, #f973164d, transparent 38%, transparent 83%, #ef44442b); }
+.element-ultimate-ice { background: repeating-conic-gradient(from 20deg, #cffafe24 0deg 2deg, transparent 2deg 31deg); }
+.element-ultimate-lightning { background: linear-gradient(124deg, transparent 19%, #a855f743 20%, transparent 24%, transparent 79%, #fef08a4d 81%, transparent 87%); }
+.element-ultimate-light { background: conic-gradient(from 10deg, #fef08a35, transparent 13%, #fef08a35 25%, transparent 38%, #fef08a35 50%, transparent 63%, #fef08a35 75%, transparent 88%, #fef08a35); }
+
+@keyframes ultimate-edge {
+  0%, 100% { opacity: 0; }
+  24%, 58% { opacity: .8; }
+}
+
+.signature-impact[data-static="true"],
+.element-ultimate[data-static="true"] { animation: none; }
+.element-ultimate[data-static="true"] { opacity: .55; }

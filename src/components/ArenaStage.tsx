@@ -1,3 +1,4 @@
+import { soundFX } from '../utils/sound';
 import React, { useEffect, useRef } from 'react';
 import { Sparkles, FastForward, Shield, CornerUpLeft, X } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
@@ -82,6 +83,10 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
 }) => {
   const prefersReducedMotion = useReducedMotion();
   const reducedMotion = reduceArenaMotion || prefersReducedMotion === true;
+  useEffect(() => {
+    if (isAnimatingExchange && pendingResolution) soundFX.playExchange(pendingResolution);
+  }, [isAnimatingExchange, pendingResolution]);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Determine active aura colors for each mage

@@ -3,6 +3,20 @@
  * Zero external audio files required; respects user mute/sound settings.
  */
 
+import type { ElementSchool, ExchangeResolutionResult } from '../engine/types';
+
+type SpellVoice = [OscillatorType, number, number, number, number];
+const spellVoices: Record<ElementSchool, SpellVoice[]> = {
+  fire: [['sawtooth', 180, 46, .28, 0], ['triangle', 340, 80, .14, .035]],
+  water: [['sine', 230, 690, .2, 0], ['sine', 680, 320, .28, .075]],
+  earth: [['triangle', 110, 31, .38, 0], ['triangle', 74, 39, .26, .095]],
+  lightning: [['square', 590, 130, .11, 0], ['sawtooth', 310, 76, .25, .07]],
+  wind: [['sine', 280, 890, .19, 0], ['triangle', 520, 170, .23, .1]],
+  ice: [['sine', 1180, 820, .28, 0], ['triangle', 1620, 1100, .22, .045], ['sine', 2040, 1470, .2, .085]],
+  dark: [['sine', 110, 39, .46, 0], ['triangle', 153, 54, .36, .08]],
+  light: [['sine', 523, 523, .3, 0], ['sine', 659, 659, .31, .045], ['triangle', 1047, 1047, .34, .09]],
+};
+
 class SoundEffectsManager {
   private ctx: AudioContext | null = null;
   public enabled = true;
@@ -19,6 +33,50 @@ class SoundEffectsManager {
       this.ctx.resume().catch(() => {});
     }
     return this.ctx;
+  }
+
+  public unlock(): void {
+    this.getContext();
+  }
+
+  public playExchange(resolution: ExchangeResolutionResult): void {
+    const ctx = this.getContext();
+    if (!ctx) return;
+    const voice = (tone: SpellVoice, volume: number, offset = 0) => {
+      const [type, from, to, duration, delay] = tone;
+      const start = ctx.currentTime + offset + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, start);
+      osc.frequency.exponentialRampToValueAtTime(to, start + duration);
+      gain.gain.setValueAtTime(.001, start);
+      gain.gain.linearRampToValueAtTime(volume, start + .015);
+      gain.gain.exponentialRampToValueAtTime(.001, start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration);
+      osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+    };
+
+    const { attackElement, defenceOutcome, isUltimate } = resolution;
+    if (defenceOutcome === 'attack_fumbled') {
+      voice(['triangle', 310, 72, .22, .12], .045);
+      return;
+    }
+
+    voice(spellVoices[attackElement][0], .035, .06);
+    for (const tone of spellVoices[attackElement]) {
+      voice(tone, defenceOutcome === 'perfect_block' || defenceOutcome === 'parry' ? .027 : .052, .35);
+    }
+    if (isUltimate) voice(['sine', 72, 33, .62, 0], .09, .15);
+    if (defenceOutcome === 'parry') {
+      voice(['sine', 990, 1480, .3, 0], .065, .35);
+      voice(['triangle', 740, 220, .25, 0], .046, .52);
+    } else if (defenceOutcome === 'half_damage' || defenceOutcome === 'perfect_block') {
+      voice(['triangle', 470, 190, .2, 0], .055, .35);
+    }
   }
 
   public playSelectMagic(): void {
