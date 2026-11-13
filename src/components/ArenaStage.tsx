@@ -8,6 +8,7 @@ import {
   PlayerId,
   PlayerState,
 } from '../engine/types';
+import { SignatureSpell } from './SignatureSpell';
 import { ElementIcon } from './ElementIcon';
 
 interface ArenaStageProps {
@@ -206,7 +207,39 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
             ? 9
             : 5;
 
-        if (progress > 0 && (!fumbled || elapsed < 520)) {
+        const signatureProjectile = !fumbled &&
+          (pendingResolution.attackElement === 'fire' || pendingResolution.attackElement === 'ice');
+        if (signatureProjectile && progress > 0 && (!atImpact || reducedMotion)) {
+          ctx.save();
+          ctx.translate(castEnd, beamY);
+          ctx.scale(direction, 1);
+          ctx.shadowColor = atkCfg.primaryHex;
+          ctx.shadowBlur = 20;
+          const trail = ctx.createLinearGradient(-115, 0, 12, 0);
+          trail.addColorStop(0, `${atkCfg.primaryHex}00`);
+          trail.addColorStop(1, atkCfg.primaryHex);
+          ctx.fillStyle = trail;
+          ctx.beginPath();
+          ctx.moveTo(-110, 0);
+          ctx.quadraticCurveTo(-25, -24, 10, 0);
+          ctx.quadraticCurveTo(-25, 24, -110, 0);
+          ctx.fill();
+          ctx.fillStyle = pendingResolution.attackElement === 'fire' ? '#fff2b0' : '#dbfaff';
+          ctx.beginPath();
+          if (pendingResolution.attackElement === 'fire') {
+            ctx.ellipse(0, 0, 20, 13, 0, 0, Math.PI * 2);
+          } else {
+            ctx.moveTo(24, 0);
+            ctx.lineTo(-7, -13);
+            ctx.lineTo(-24, 0);
+            ctx.lineTo(-7, 13);
+            ctx.closePath();
+          }
+          ctx.fill();
+          ctx.restore();
+        }
+
+        if (!signatureProjectile && progress > 0 && (!fumbled || elapsed < 520)) {
           ctx.save();
           const grad = ctx.createLinearGradient(fromX, beamY, toX, beamY);
           grad.addColorStop(0, atkCfg.primaryHex);
@@ -379,6 +412,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           : ''
       }`}
     >
+      {resolution && <SignatureSpell resolution={resolution} reducedMotion={reducedMotion} />}
       <div role="status" className="sr-only">{resolution?.summaryText}</div>
       {/* Interactive Canvas Particle & Spell Beam Layer */}
       <canvas

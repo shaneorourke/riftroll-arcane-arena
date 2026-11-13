@@ -86,3 +86,67 @@
     animation: none !important;
   }
 }
+
+.signature-impact {
+  top: 48%;
+  width: clamp(92px, 23vw, 190px);
+  translate: -50% -50%;
+  animation-delay: 350ms;
+  animation-fill-mode: both;
+}
+
+.signature-large { width: clamp(120px, 29vw, 240px); }
+.signature-fire { animation-name: fire-burst; animation-duration: 650ms; filter: drop-shadow(0 0 16px #ff601c); }
+.signature-ice { animation-name: ice-crystals; animation-duration: 850ms; filter: drop-shadow(0 0 12px #4de5ff); }
+
+@keyframes fire-burst {
+  0% { opacity: 0; scale: .18; }
+  24% { opacity: 1; scale: 1.08; }
+  100% { opacity: 0; scale: 1.35; }
+}
+
+@keyframes ice-crystals {
+  0% { opacity: 0; scale: .6 .12; }
+  24%, 68% { opacity: 1; scale: 1; }
+  100% { opacity: 0; scale: 1.04; }
+}
+
+.dark-ultimate { isolation: isolate; }
+.dark-ultimate-shadow {
+  background: radial-gradient(ellipse at center, transparent 34%, #1d07395c 65%, #080114b8 100%);
+  animation: eclipse-shadow 1400ms ease both;
+}
+.dark-ultimate-eclipse {
+  position: absolute;
+  inset: 32% auto auto 50%;
+  width: min(48vw, 44vh, 400px);
+  translate: -50% -50%;
+  animation: eclipse-rise 1000ms ease both;
+}
+.dark-ultimate-wave {
+  position: absolute;
+  inset: -18%;
+  background: radial-gradient(ellipse, transparent 48%, #b768fc 51%, #572490a8 55%, transparent 62%);
+  animation: eclipse-wave 1050ms 270ms ease-out both;
+}
+.dark-ultimate[data-reflected="true"] .dark-ultimate-wave { transform-origin: 27% 50%; }
+
+@keyframes eclipse-shadow {
+  0%, 100% { opacity: 0; }
+  25%, 68% { opacity: 1; }
+}
+@keyframes eclipse-rise {
+  0% { opacity: 0; scale: .35; rotate: -20deg; }
+  32% { opacity: .95; scale: 1; }
+  100% { opacity: 0; scale: 1.12; rotate: 10deg; }
+}
+@keyframes eclipse-wave {
+  0% { opacity: 0; scale: .18; }
+  25% { opacity: .7; }
+  100% { opacity: 0; scale: 1.48; }
+}
+
+.signature-impact[data-static="true"],
+.dark-ultimate[data-static="true"] * { animation: none; }
+.dark-ultimate[data-static="true"] .dark-ultimate-wave { opacity: .18; }
+.dark-ultimate[data-static="true"] .dark-ultimate-eclipse { opacity: .65; }
