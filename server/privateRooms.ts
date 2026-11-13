@@ -257,5 +257,9 @@ if (standalone) {
   const app = express();
   app.use('/api', api);
   app.use(express.static(fileURLToPath(new URL('../dist/', import.meta.url))));
-  app.listen(Number(process.env.PORT ?? 3002), process.env.RIFTROLL_HOST ?? '127.0.0.1');
+  const port = Number(process.env.PORT ?? 3000);
+  const host = process.env.RIFTROLL_HOST || '0.0.0.0';
+  app.listen(port, host, () => {
+    console.log(`RIFTROLL listening on ${host}:${port}`);
+  });
 }

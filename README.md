@@ -7,7 +7,7 @@
 
 Run `npm run dev`, then open **Online Rooms → Host a duel**. Share the invite link or room code and open it in a second browser profile or on another device that can reach the same server. A tab can reclaim its seat after a refresh. The server owns dice and turn validation.
 
-For a built copy, run `npm run build` and `npm start`. The server listens on localhost port 3002 by default. Set `PORT` and `RIFTROLL_HOST` to match your host. For phone testing on the same network, run Vite with a reachable LAN address and open that address on both devices.
+For a built copy, run `npm run build` and `npm start`. The server listens on all IPv4 interfaces on port 3000 by default and honours the hosting platform’s `PORT` variable. Set `RIFTROLL_HOST=127.0.0.1` for localhost-only testing. For phone testing on the same network, run Vite with a reachable LAN address and open that address on both devices.
 
 Rooms expire an hour after creation. The standalone server saves rooms in `.riftroll-rooms/` by default. Set `RIFTROLL_ROOM_DATA_DIR` to a persistent volume when deploying and use one server process per directory. Vite uses in-memory rooms by default. Internet play requires deploying this server and serving the game over HTTPS.
 
