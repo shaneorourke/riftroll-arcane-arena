@@ -6,6 +6,7 @@ import {
   Dices,
   Play,
   RotateCcw,
+  LogOut,
   Settings as SettingsIcon,
   Shield,
   Sliders,
@@ -121,6 +122,18 @@ export default function App() {
     setArmedUltimateDraft(false);
     setView('BATTLE');
     soundFX.playSelectMagic();
+  };
+
+  const exitMatch = () => {
+    if (canResumeMatch && !window.confirm('Exit this match? Your progress in this match will be lost.')) {
+      return;
+    }
+
+    setHasStartedMatch(false);
+    setArmedUltimateDraft(false);
+    setClashRolls({});
+    setLastStandRoll(null);
+    setView('MENU');
   };
 
   // AI Automated Turn Progression for Spell Selection
@@ -346,6 +359,16 @@ export default function App() {
 
         {/* Zone 3: 1 primary action */}
         <div className="flex items-center gap-3 shrink-0">
+          {canResumeMatch && (
+            <button
+              type="button"
+              onClick={exitMatch}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-700 px-2 py-2 text-xs font-bold text-slate-200 hover:bg-slate-800 sm:px-3"
+            >
+              <LogOut aria-hidden="true" className="size-3.5" />
+              Exit Match
+            </button>
+          )}
           <button
             type="button"
             onClick={() =>

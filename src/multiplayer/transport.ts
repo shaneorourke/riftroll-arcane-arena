@@ -5,6 +5,12 @@ export interface GuestSeat {
   token: string;
 }
 
+export type RoomPlayback = { revision: number } & (
+  | { kind: 'exchange'; resolution: ExchangeResolutionResult }
+  | { kind: 'clash'; rolls: Record<PlayerId, number>; resolution: ExchangeResolutionResult }
+  | { kind: 'last-stand'; playerId: PlayerId; roll: number }
+);
+
 export interface RoomSnapshot {
   code: string;
   seat: PlayerId;
@@ -12,7 +18,7 @@ export interface RoomSnapshot {
   ready: boolean;
   match: MatchState;
   clashActor: PlayerId | null;
-  exchange?: { revision: number; resolution: ExchangeResolutionResult };
+  playback?: RoomPlayback;
 }
 
 export type DuelIntent =

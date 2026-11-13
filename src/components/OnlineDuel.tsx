@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from 'motion/react';
 import { ArenaStage } from './ArenaStage';
 import { PlayerHudCard } from './PlayerHudCard';
 import { SpellSelector } from './SpellSelector';
@@ -16,7 +17,7 @@ function savedSeat(): GuestSeat | null {
   return token ? { code, token } : null;
 }
 
-export function OnlineDuel({ onClose, reducedMotion }: {
+export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
   onClose: () => void;
   reducedMotion: boolean;
 }) {
@@ -28,23 +29,25 @@ export function OnlineDuel({ onClose, reducedMotion }: {
   const [busy, setBusy] = useState(false);
   const [ultimate, setUltimate] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [exchange, setExchange] = useState<RoomSnapshot['exchange']>();
+  const [playback, setPlayback] = useState<RoomSnapshot['playback']>();
+  const prefersReducedMotion = useReducedMotion();
+  const reducedMotion = reduceArenaMotion || prefersReducedMotion === true;
   const seenRoom = useRef<{ code: string; revision: number } | null>(null);
 
   useEffect(() => {
-    if (!exchange) return;
-    const timer = window.setTimeout(() => setExchange(undefined),
-      reducedMotion ? 450 : exchange.resolution.isUltimate || exchange.resolution.attackTier === 'critical_strike' ? 2100 : 1500);
+    if (!playback) return;
+    const duration = playback.kind === 'exchange'
+      ? reducedMotion ? 450 : playback.resolution.isUltimate || playback.resolution.attackTier === 'critical_strike' ? 2100 : 1500
+      : reducedMotion ? 650 : 950;
+    const timer = window.setTimeout(() => setPlayback(undefined), duration);
     return () => window.clearTimeout(timer);
-  }, [exchange, reducedMotion]);
+  }, [playback, reducedMotion]);
 
   function update(next: RoomSnapshot) {
     const seen = seenRoom.current;
     if (seen?.code === next.code && next.revision <= seen.revision) return;
-    if (seen?.code === next.code && next.exchange?.revision === next.revision) {
-      setExchange(next.exchange);
-    } else {
-      setExchange(undefined);
+    if (seen?.code === next.code && next.playback && next.playback.revision > seen.revision) {
+      setPlayback(next.playback);
     }
     seenRoom.current = { code: next.code, revision: next.revision };
     setRoom(next);
@@ -116,7 +119,7 @@ export function OnlineDuel({ onClose, reducedMotion }: {
     url.searchParams.delete('room');
     history.replaceState(null, '', url);
     seenRoom.current = null;
-    setExchange(undefined);
+    setPlayback(undefined);
     setCode('');
     setSeat(null);
     setRoom(null);
@@ -127,7 +130,7 @@ export function OnlineDuel({ onClose, reducedMotion }: {
   }
 
   function act(intent: DuelIntent) {
-    if (!seat || !room || busy || connection || exchange) return;
+    if (!seat || !room || busy || connection || playback) return;
     void run(async () => {
       update(await multiplayerTransport.act(seat, room.revision, intent));
       setUltimate(false);
@@ -143,10 +146,13 @@ export function OnlineDuel({ onClose, reducedMotion }: {
     : phase === 'SELECT_DEFENCE_MAGIC' || phase === 'ROLL_DEFENCE_D20' ? defender
     : phase === 'ARCANE_CLASH_ROLL' ? room?.clashActor
     : phase === 'LAST_STAND_PROMPT' ? state?.pendingLastStandPlayerId : null;
-  const acting = !exchange && room && actor === room.seat;
+  const acting = !playback && room && actor === room.seat;
   const player = room && state?.players[room.seat];
-  const disabled = busy || !!connection || !!exchange;
-  const resolution = exchange?.resolution;
+  const disabled = busy || !!connection || !!playback;
+  const exchange = playback?.kind === 'exchange' ? playback.resolution : null;
+  const clash = playback?.kind === 'clash' ? playback : null;
+  const lastStand = playback?.kind === 'last-stand' ? playback : null;
+  const resolution = exchange ?? clash?.resolution;
 
   return (
     <section className="mx-auto max-w-4xl space-y-4 px-4 py-6">
@@ -190,10 +196,12 @@ export function OnlineDuel({ onClose, reducedMotion }: {
             {(['p1', 'p2'] as const).map((id) => <PlayerHudCard key={id} player={state.players[id]} role={id === attacker ? 'attacker' : 'defender'} selectedElement={id === attacker ? state.selectedAttackElement : state.selectedDefenceElement} requiredWins={2} compact />)}
           </div>
           <ArenaStage p1={state.players.p1} p2={state.players.p2} activeAttackerId={resolution?.attackerId ?? state.activeAttackerId}
-            activeActorId={exchange ? null : actor ?? null} selectedAttackElement={resolution?.attackElement ?? state.selectedAttackElement} selectedDefenceElement={resolution?.defenceElement ?? state.selectedDefenceElement}
-            selectedUseUltimate={resolution?.isUltimate ?? state.selectedUseUltimate} isAnimatingExchange={!!resolution} pendingResolution={resolution ?? null}
-            clashRolls={phase === 'ARCANE_CLASH_ROLL' ? {} : null} lastStandId={exchange ? null : state.pendingLastStandPlayerId}
-            reducedMotion={reducedMotion} onSkipAnimation={() => setExchange(undefined)} />
+            activeActorId={playback ? null : actor ?? null} selectedAttackElement={resolution?.attackElement ?? state.selectedAttackElement} selectedDefenceElement={resolution?.defenceElement ?? state.selectedDefenceElement}
+            selectedUseUltimate={resolution?.isUltimate ?? state.selectedUseUltimate} isAnimatingExchange={!!exchange} pendingResolution={exchange}
+            clashRolls={clash?.rolls ?? (phase === 'ARCANE_CLASH_ROLL' ? {} : null)}
+            lastStandId={lastStand?.playerId ?? (playback ? null : state.pendingLastStandPlayerId)}
+            lastStandRoll={lastStand?.roll ?? null}
+            reducedMotion={reducedMotion} onSkipAnimation={() => setPlayback(undefined)} />
           {acting && (phase === 'SELECT_ATTACK_MAGIC' || phase === 'SELECT_DEFENCE_MAGIC') && (
             <SpellSelector mode={phase === 'SELECT_ATTACK_MAGIC' ? 'attack' : 'defence'} playerName={player.name}
               arcaneMeter={player.arcaneMeter} useUltimate={ultimate} onToggleUltimate={setUltimate}
@@ -205,14 +213,14 @@ export function OnlineDuel({ onClose, reducedMotion }: {
               {phase === 'LAST_STAND_PROMPT' ? 'Roll 20 to survive' : phase === 'ARCANE_CLASH_ROLL' ? 'Roll again' : 'Roll'}
             </button>
           )}
-          {!exchange && phase === 'BATTLE_OVER' && (
+          {!playback && phase === 'BATTLE_OVER' && (
             room.seat === 'p1' ? <button className={button} disabled={disabled} onClick={() => act({ type: 'next-battle' })}>Next battle</button>
               : <p>Waiting for the host to start the next battle.</p>
           )}
-          {!exchange && phase === 'MATCH_OVER' && state.matchWinnerId && <p className="text-xl font-bold">{state.players[state.matchWinnerId].name} wins!</p>}
-          {!exchange && !acting && actor && <p role="status">Waiting for {state.players[actor].name}…</p>}
+          {!playback && phase === 'MATCH_OVER' && state.matchWinnerId && <p className="text-xl font-bold">{state.players[state.matchWinnerId].name} wins!</p>}
+          {!playback && !acting && actor && <p role="status">Waiting for {state.players[actor].name}…</p>}
           {state.attackRollResult !== null && <p>Attack roll {state.attackRollResult}</p>}
-          {!exchange && state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
+          {!playback && state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
         </>
       )}
     </section>

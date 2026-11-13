@@ -6,7 +6,8 @@ import {
   completeExchangeAnimation, createInitialMatchState, selectAttackMagic, selectDefenceMagic,
   startNextBattle, submitArcaneClashRolls, submitAttackRoll, submitDefenceRoll, submitLastStandRoll,
 } from '../src/engine/matchController';
-import type { ElementSchool, ExchangeResolutionResult, MatchState, PlayerId } from '../src/engine/types';
+import type { ElementSchool, MatchState, PlayerId } from '../src/engine/types';
+import type { RoomPlayback } from '../src/multiplayer/transport';
 
 const ROOM_LIFETIME_MS = 60 * 60 * 1000;
 const MAX_ROOMS = 500;
@@ -17,7 +18,7 @@ interface Room {
   revision: number;
   match: MatchState;
   clashRoll: number | null;
-  exchange?: { revision: number; resolution: ExchangeResolutionResult };
+  playback?: RoomPlayback;
 }
 
 const rooms = new Map<string, Room>();
@@ -40,7 +41,7 @@ function snapshot(code: string, room: Room, seat: PlayerId) {
     ready: Boolean(room.seats.p2),
     clashActor: room.match.phase === "ARCANE_CLASH_ROLL" ? (room.clashRoll === null ? "p1" : "p2") : null,
     match: room.match,
-    exchange: room.exchange,
+    playback: room.playback,
   };
 }
 
@@ -122,18 +123,24 @@ function applyIntent(room: Room, seat: PlayerId, body: Record<string, unknown>):
     } else if (state.phase === 'ROLL_DEFENCE_D20' && seat === defender) {
       next = submitDefenceRoll(state, randomInt(1, 21));
       if (next.phase === 'ANIMATING_EXCHANGE' && next.pendingResolution) {
-        room.exchange = { revision: room.revision + 1, resolution: next.pendingResolution };
+        room.playback = { kind: 'exchange', revision: room.revision + 1, resolution: next.pendingResolution };
         next = completeExchangeAnimation(next);
       }
     } else if (state.phase === 'LAST_STAND_PROMPT' && seat === state.pendingLastStandPlayerId) {
-      next = submitLastStandRoll(state, randomInt(1, 21));
+      const roll = randomInt(1, 21);
+      next = submitLastStandRoll(state, roll);
+      if (next !== state) {
+        room.playback = { kind: 'last-stand', revision: room.revision + 1, playerId: seat, roll };
+      }
     } else if (state.phase === 'ARCANE_CLASH_ROLL') {
       if (seat === 'p1' && room.clashRoll === null) {
         room.clashRoll = randomInt(1, 21);
         return true;
       }
-      if (seat === 'p2' && room.clashRoll !== null) {
-        next = submitArcaneClashRolls(state, room.clashRoll, randomInt(1, 21));
+      if (seat === 'p2' && room.clashRoll !== null && state.pendingResolution) {
+        const rolls = { p1: room.clashRoll, p2: randomInt(1, 21) };
+        next = submitArcaneClashRolls(state, rolls.p1, rolls.p2);
+        room.playback = { kind: 'clash', revision: room.revision + 1, rolls, resolution: state.pendingResolution };
         room.clashRoll = null;
       }
     }
