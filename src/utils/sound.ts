@@ -50,7 +50,7 @@ class SoundEffectsManager {
   public playArenaShift(arena: ArenaId): void {
     const ctx = this.getContext();
     if (!ctx) return;
-    const frequencies = { forge: [95, 62, 42], glacier: [523, 784, 1047], storm: [740, 105, 55], temple: [290, 460, 620] }[arena];
+    const frequencies = { forge: [95, 62, 42], glacier: [523, 784, 1047], storm: [740, 105, 55], temple: [290, 460, 620], dark: [190, 110, 58] }[arena];
     for (const [index, frequency] of frequencies.entries()) {
       const start = ctx.currentTime + index * 0.08;
       const tone = ctx.createOscillator();

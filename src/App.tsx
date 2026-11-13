@@ -47,6 +47,7 @@ import {
   arenaShiftRemaining,
   arenaAttackBonus,
   getArenaShift,
+  isAttackHidden,
   SHIFT_ARENAS,
   SHIFT_ARENA_IDS,
   startNextBattle,
@@ -168,7 +169,7 @@ export default function App() {
     ) {
       const timer = window.setTimeout(() => {
         const defElement = chooseAIDefenceElement(
-          matchState.selectedAttackElement!,
+          isAttackHidden(matchState) ? null : matchState.selectedAttackElement,
           matchState.settings.aiDifficulty,
           defender.defenceLock
         );
@@ -246,6 +247,10 @@ export default function App() {
   const attacker = matchState.players[attackerId];
   const defender = matchState.players[defenderId];
   const requiredWins = getRequiredWinsForFormat(matchState.settings.format);
+
+  const attackHidden = isAttackHidden(matchState);
+  const visibleAttack = attackHidden ? null : matchState.selectedAttackElement;
+  const visibleUltimate = !attackHidden && (matchState.selectedUseUltimate || armedUltimateDraft);
 
   const currentMod =
     matchState.selectedAttackElement && matchState.selectedDefenceElement
@@ -825,12 +830,12 @@ export default function App() {
                       }
                       selectedElement={
                         matchState.activeAttackerId === 'p2'
-                          ? matchState.selectedAttackElement
+                          ? visibleAttack
                           : matchState.selectedDefenceElement
                       }
                       isUltimateSelected={
                         matchState.activeAttackerId === 'p2' &&
-                        (matchState.selectedUseUltimate || armedUltimateDraft)
+                        visibleUltimate
                       }
                       requiredWins={requiredWins}
                       compact
@@ -849,12 +854,12 @@ export default function App() {
                     }
                     selectedElement={
                       matchState.activeAttackerId === 'p1'
-                        ? matchState.selectedAttackElement
+                        ? visibleAttack
                         : matchState.selectedDefenceElement
                     }
                     isUltimateSelected={
                       matchState.activeAttackerId === 'p1' &&
-                      (matchState.selectedUseUltimate || armedUltimateDraft)
+                      visibleUltimate
                     }
                     requiredWins={requiredWins}
                   />
@@ -868,12 +873,12 @@ export default function App() {
                     }
                     selectedElement={
                       matchState.activeAttackerId === 'p2'
-                        ? matchState.selectedAttackElement
+                        ? visibleAttack
                         : matchState.selectedDefenceElement
                     }
                     isUltimateSelected={
                       matchState.activeAttackerId === 'p2' &&
-                      (matchState.selectedUseUltimate || armedUltimateDraft)
+                      visibleUltimate
                     }
                     requiredWins={requiredWins}
                   />
@@ -892,10 +897,10 @@ export default function App() {
                 clashRolls={isClash ? clashRolls : null}
                 lastStandId={lastStandId}
                 lastStandRoll={lastStandRoll}
-                selectedAttackElement={matchState.selectedAttackElement}
+                selectedAttackElement={visibleAttack}
                 selectedDefenceElement={matchState.selectedDefenceElement}
                 selectedUseUltimate={
-                  matchState.selectedUseUltimate || armedUltimateDraft
+                  visibleUltimate
                 }
                 isAnimatingExchange={matchState.phase === 'ANIMATING_EXCHANGE'}
                 pendingResolution={matchState.pendingResolution}
@@ -914,12 +919,12 @@ export default function App() {
                   }
                   selectedElement={
                     matchState.activeAttackerId === 'p1'
-                      ? matchState.selectedAttackElement
+                      ? visibleAttack
                       : matchState.selectedDefenceElement
                   }
                   isUltimateSelected={
                     matchState.activeAttackerId === 'p1' &&
-                    (matchState.selectedUseUltimate || armedUltimateDraft)
+                    visibleUltimate
                   }
                   requiredWins={requiredWins}
                   compact
@@ -963,12 +968,12 @@ export default function App() {
                     />
                   )}
 
-                  {matchState.phase === 'SELECT_ATTACK_MAGIC' && !attacker.isAI && !getArenaShift(matchState) && (
+                  {matchState.phase === 'SELECT_ATTACK_MAGIC' && !attacker.isAI && arenaShiftRemaining(matchState) === 0 && (
                     <div className="flex flex-wrap gap-2 p-2">
                       {SHIFT_ARENA_IDS.map((id) => (
                         <button key={id} type="button" className="rounded-lg border border-slate-500 px-3 py-2 text-sm font-bold"
-                          onClick={() => setMatchState((state) => openArenaShift(state, id))}>
-                          Open {SHIFT_ARENAS[id].name}
+                          onClick={() => { setArmedUltimateDraft(false); setMatchState((state) => openArenaShift(state, id)); }}>
+                          Teleport to {SHIFT_ARENAS[id].name} · {SHIFT_ARENAS[id].reward}
                         </button>
                       ))}
                     </div>
@@ -992,7 +997,8 @@ export default function App() {
                       playerName={defender.name}
                       arcaneMeter={defender.arcaneMeter}
                       useUltimate={false}
-                      opposingAttackElement={matchState.selectedAttackElement}
+                      opposingAttackElement={visibleAttack}
+                      hiddenAttack={attackHidden}
                       lockedElement={defender.defenceLock}
                       disabled={defender.isAI}
                       onSelectElement={handleSelectDefence}

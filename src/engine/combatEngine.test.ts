@@ -20,6 +20,7 @@ import {
   selectDefenceMagic,
   openArenaShift,
   arenaShiftRemaining,
+  isAttackHidden,
   startNextBattle,
   submitArcaneClashRolls,
   submitAttackRoll,
@@ -466,72 +467,49 @@ export function runCombatEngineTestSuite(): TestCaseResult[] {
     `Blocked Ice: ${blocked === nextCast}; AI avoids Ice: ${aiAvoidsLock}`
   );
 
-  const glacier = openArenaShift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'), 'glacier');
-  const resolveGlacierTurn = (state: typeof glacier, element: 'ice' | 'fire' | 'lightning' | 'water') => {
+  const beforeTeleport = createInitialMatchState(DEFAULT_SETTINGS, 'p1');
+  const glacier = openArenaShift(beforeTeleport, 'glacier');
+  const resolveArenaExchange = (state: typeof glacier, element: 'ice' | 'fire') => {
     const attack = selectAttackMagic(state, element, false);
     const defence = selectDefenceMagic(attack, 'light');
     return submitDefenceRoll(submitAttackRoll(defence, 12), 8);
   };
-  const iceExchange = resolveGlacierTurn(glacier, 'ice');
-  const secondExchange = completeExchangeAnimation(iceExchange);
-  const fireExchange = resolveGlacierTurn(secondExchange, 'fire');
-  const expired = completeExchangeAnimation(fireExchange);
-  const nextBattle = startNextBattle({ ...expired, phase: 'BATTLE_OVER' });
+  const ice = resolveArenaExchange(glacier, 'ice');
+  const second = completeExchangeAnimation(ice);
+  const expired = completeExchangeAnimation(resolveArenaExchange(second, 'fire'));
   assertTest(
-    'glacier-rift',
-    'Match Progression',
-    'Glacier Rift boosts Ice attacks for two exchanges and can open once per battle',
-    arenaShiftRemaining(glacier) === 2 &&
-      iceExchange.pendingResolution?.effectiveAttackRoll === 14 &&
-      iceExchange.pendingResolution?.naturalAttackRoll === 12 &&
-      arenaShiftRemaining(secondExchange) === 1 &&
-      fireExchange.pendingResolution?.effectiveAttackRoll === 12 &&
+    'arena-teleport', 'Match Progression',
+    'Teleport spends the attack and reopens after two completed exchanges',
+    glacier.activeAttackerId === 'p2' && arenaShiftRemaining(glacier) === 2 &&
+      ice.pendingResolution?.effectiveAttackRoll === 16 && ice.pendingResolution.naturalAttackRoll === 12 &&
+      arenaShiftRemaining(second) === 1 && openArenaShift(second, 'forge') === second &&
       arenaShiftRemaining(expired) === 0 &&
-      openArenaShift(expired, 'forge') === expired &&
-      arenaShiftRemaining(openArenaShift(nextBattle, 'forge')) === 2,
-    'Ice +2, Fire +0, two exchanges, resets for next battle'
+      resolveArenaExchange(openArenaShift(expired, 'forge'), 'fire').pendingResolution?.effectiveAttackRoll === 15,
+    'Opponent attacks first, Ice +4, Fire +3 after expiry'
   );
 
-  const forge = openArenaShift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'), 'forge');
-  const legacyGlacier = { ...forge, arenaShift: undefined, glacierRiftStartedOn: 1 };
+  const injured = {
+    ...beforeTeleport,
+    players: { ...beforeTeleport.players, p1: { ...beforeTeleport.players.p1, hp: 70, arcaneMeter: 90 } },
+  };
+  const storm = openArenaShift(injured, 'storm');
+  const temple = openArenaShift(injured, 'temple');
   assertTest(
-    'ember-forge',
-    'Match Progression',
-    'Ember Forge boosts Fire and shares the once-per-battle arena shift limit',
-    resolveGlacierTurn(forge, 'fire').pendingResolution?.effectiveAttackRoll === 14 &&
-      resolveGlacierTurn(forge, 'ice').pendingResolution?.effectiveAttackRoll === 12 &&
-      openArenaShift(forge, 'glacier') === forge &&
-      resolveGlacierTurn(legacyGlacier, 'ice').pendingResolution?.effectiveAttackRoll === 14,
-    'Fire +2, Ice +0, shared limit, saved Glacier Rift still boosts Ice'
+    'arena-rewards', 'Match Progression', 'Storm charges Arcane and Temple heals only the caster, with caps',
+    storm.players.p1.arcaneMeter === 100 && storm.players.p1.hp === 70 &&
+      temple.players.p1.hp === 75 && temple.players.p1.arcaneMeter === 90 &&
+      storm.players.p2 === injured.players.p2 && temple.players.p2 === injured.players.p2,
+    'Arcane and health cap correctly'
   );
 
-  const storm = openArenaShift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'), 'storm');
+  const dark = openArenaShift(beforeTeleport, 'dark');
+  const hidden = selectAttackMagic(dark, 'ice', false);
   assertTest(
-    'storm-spire',
-    'Match Progression',
-    'Storm Spire boosts Lightning attacks for both players and expires after two exchanges',
-    resolveGlacierTurn(storm, 'lightning').pendingResolution?.effectiveAttackRoll === 14 &&
-      resolveGlacierTurn(storm, 'fire').pendingResolution?.effectiveAttackRoll === 12 &&
-      resolveGlacierTurn(completeExchangeAnimation(resolveGlacierTurn(storm, 'lightning')), 'lightning')
-        .pendingResolution?.effectiveAttackRoll === 14 &&
-      arenaShiftRemaining(completeExchangeAnimation(resolveGlacierTurn(
-        completeExchangeAnimation(resolveGlacierTurn(storm, 'lightning')), 'lightning'
-      ))) === 0,
-    'Lightning +2 for both players, Fire +0, expires after two exchanges'
-  );
-
-  const temple = openArenaShift(createInitialMatchState(DEFAULT_SETTINGS, 'p1'), 'temple');
-  const templeSecond = completeExchangeAnimation(resolveGlacierTurn(temple, 'water'));
-  const templeLast = resolveGlacierTurn(templeSecond, 'water');
-  assertTest(
-    'flooded-temple',
-    'Match Progression',
-    'Flooded Temple boosts Water attacks for both players for two exchanges',
-    resolveGlacierTurn(temple, 'water').pendingResolution?.effectiveAttackRoll === 14 &&
-      resolveGlacierTurn(temple, 'ice').pendingResolution?.effectiveAttackRoll === 12 &&
-      templeLast.pendingResolution?.effectiveAttackRoll === 14 &&
-      arenaShiftRemaining(completeExchangeAnimation(templeLast)) === 0,
-    'Water +2 for both players, Ice +0, expires after two exchanges'
+    'dark-realm', 'Match Progression', 'Dark Realm hides each attack until the shield is chosen',
+    !isAttackHidden(dark) && isAttackHidden(hidden) &&
+      !isAttackHidden(selectDefenceMagic(hidden, 'fire')) &&
+      isAttackHidden(selectAttackMagic(completeExchangeAnimation(resolveArenaExchange(dark, 'ice')), 'fire', false)),
+    'Both attacks hidden during defence selection'
   );
 
   return results;

@@ -52,6 +52,7 @@ const arenaBackdrops: Record<ArenaId, string> = {
   forge: 'forge-heat',
   storm: 'storm-sky',
   temple: 'temple-depths',
+  dark: 'dark-realm-mist',
 };
 
 const CAST_WINDUP_MS = 100;
@@ -528,7 +529,7 @@ export const ArenaStage: React.FC<ArenaStageProps> = ({
           )}
           <div role="status" className="pointer-events-none absolute inset-x-0 bottom-2 z-20 text-center">
             <span className="rounded-full bg-slate-950/90 px-2 py-1 text-xs font-bold text-cyan-100">
-              {SHIFT_ARENAS[shiftArena].icon} {SHIFT_ARENAS[shiftArena].name} · {SHIFT_ARENAS[shiftArena].label} attack +2 · {shiftTurns === 2 ? '●●' : '●'}
+              {SHIFT_ARENAS[shiftArena].icon} {SHIFT_ARENAS[shiftArena].name} · {SHIFT_ARENAS[shiftArena].reward} · {shiftTurns === 2 ? '●●' : '●'}
               <span className="sr-only"> {shiftTurns} {shiftTurns === 1 ? 'exchange' : 'exchanges'} left</span>
             </span>
           </div>

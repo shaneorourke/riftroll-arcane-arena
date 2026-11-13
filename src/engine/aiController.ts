@@ -68,11 +68,13 @@ export function chooseAIAttackDecision(
  * Difficulty governs how consistently the AI identifies the +2 elemental counter.
  */
 export function chooseAIDefenceElement(
-  attackElement: ElementSchool,
+  attackElement: ElementSchool | null,
   difficulty: AIDifficulty,
   lockedElement?: ElementSchool
 ): ElementSchool {
   const availableSchools = ELEMENT_ORDER.filter((element) => element !== lockedElement);
+
+  if (!attackElement) return availableSchools[(rollCryptographicD20() - 1) % availableSchools.length];
 
   // Find the school that defends strongly against `attackElement` (+2 effective defence roll)
   const idealCounter =

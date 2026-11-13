@@ -456,3 +456,10 @@
   18%, 54% { opacity: .95; scale: 1; }
   100% { opacity: 0; }
 }
+
+.dark-realm-mist {
+  background: radial-gradient(ellipse at 50% 70%, transparent 25%, #2e106577 68%, #090313);
+  box-shadow: inset 0 0 55px #7e22ce66;
+  animation: glacier-arrival 700ms ease-out both;
+}
+.dark-realm-mist[data-static="true"] { animation: none; }

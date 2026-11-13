@@ -1,4 +1,4 @@
-export type ArenaId = 'glacier' | 'forge' | 'storm' | 'temple';
+export type ArenaId = 'glacier' | 'forge' | 'storm' | 'temple' | 'dark';
 
 export type ElementSchool =
   | 'fire'

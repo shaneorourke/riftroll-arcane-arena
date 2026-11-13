@@ -18,6 +18,7 @@ interface SpellSelectorProps {
   opposingAttackElement?: ElementSchool | null;
   disabled?: boolean;
   lockedElement?: ElementSchool;
+  hiddenAttack?: boolean;
   onSelectElement: (element: ElementSchool) => void;
 }
 
@@ -30,6 +31,7 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
   opposingAttackElement,
   disabled = false,
   lockedElement,
+  hiddenAttack,
   onSelectElement,
 }) => {
   const canUnleashUltimate = mode === 'attack' && arcaneMeter >= ARCANE_METER_MAX;
@@ -63,6 +65,7 @@ export const SpellSelector: React.FC<SpellSelectorProps> = ({
         )}
       </div>
 
+      {hiddenAttack && <p className="mb-2 text-xs font-semibold text-violet-200">Attack hidden</p>}
       {lockedElement && (
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-amber-200">
           <LockKeyhole aria-hidden="true" className="size-3.5 shrink-0" />

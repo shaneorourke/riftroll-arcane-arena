@@ -288,11 +288,11 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
               </p>
             </div>
           )}
-          {acting && phase === 'SELECT_ATTACK_MAGIC' && !getArenaShift(state) && (
+          {acting && phase === 'SELECT_ATTACK_MAGIC' && arenaShiftRemaining(state) === 0 && (
             <div className="flex flex-wrap gap-2">
               {SHIFT_ARENA_IDS.map((id) => (
                 <button key={id} type="button" className={button} disabled={disabled} onClick={() => act({ type: 'open-arena', arena: id })}>
-                  Open {SHIFT_ARENAS[id].name}
+                  Teleport to {SHIFT_ARENAS[id].name} · {SHIFT_ARENAS[id].reward}
                 </button>
               ))}
             </div>
@@ -300,7 +300,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
           {acting && (phase === 'SELECT_ATTACK_MAGIC' || phase === 'SELECT_DEFENCE_MAGIC') && (
             <SpellSelector mode={phase === 'SELECT_ATTACK_MAGIC' ? 'attack' : 'defence'} playerName={player.name}
               arcaneMeter={player.arcaneMeter} useUltimate={ultimate} onToggleUltimate={setUltimate}
-              opposingAttackElement={state.selectedAttackElement} lockedElement={phase === 'SELECT_DEFENCE_MAGIC' ? player.defenceLock : undefined}
+              opposingAttackElement={state.selectedAttackElement} hiddenAttack={phase === 'SELECT_DEFENCE_MAGIC' && state.selectedAttackElement === null} lockedElement={phase === 'SELECT_DEFENCE_MAGIC' ? player.defenceLock : undefined}
               disabled={disabled} onSelectElement={(element) => act(phase === 'SELECT_ATTACK_MAGIC' ? { type: 'attack', element, ultimate } : { type: 'defend', element })} />
           )}
           {acting && phase !== 'SELECT_ATTACK_MAGIC' && phase !== 'SELECT_DEFENCE_MAGIC' && (
@@ -315,7 +315,7 @@ export function OnlineDuel({ onClose, reducedMotion: reduceArenaMotion }: {
           {!roll && !playback && phase === 'MATCH_OVER' && state.matchWinnerId && <p className="text-xl font-bold">{state.players[state.matchWinnerId].name} wins!</p>}
           {!roll && !playback && !acting && actor && <p role="status">Waiting for {state.players[actor].name}…</p>}
           {state.attackRollResult !== null && (
-            <p>Attack roll {state.attackRollResult}{arenaAttackBonus(state) > 0 && ' · Arena +2'}</p>
+            <p>Attack roll {state.attackRollResult}{arenaAttackBonus(state) > 0 && ` · Arena +${arenaAttackBonus(state)}`}</p>
           )}
           {!roll && !playback && state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
         </>

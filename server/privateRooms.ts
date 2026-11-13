@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import express from 'express';
 import { ELEMENT_ORDER } from '../src/engine/elements';
 import {
-  isArenaId, openArenaShift, completeExchangeAnimation, createInitialMatchState, selectAttackMagic, selectDefenceMagic,
+  isAttackHidden, isArenaId, openArenaShift, completeExchangeAnimation, createInitialMatchState, selectAttackMagic, selectDefenceMagic,
   startNextBattle, submitArcaneClashRolls, submitAttackRoll, submitDefenceRoll, submitLastStandRoll,
 } from '../src/engine/matchController';
 import type { ElementSchool, MatchState, PlayerId } from '../src/engine/types';
@@ -74,13 +74,21 @@ api.use((_req, res, next) => {
 });
 
 function snapshot(code: string, room: Room, seat: PlayerId) {
+  const state = room.match;
+  const attacker = state.activeAttackerId;
+  const hidden = seat !== attacker && isAttackHidden(state);
   return {
     code, seat,
     expiresAt: room.expiresAt,
     revision: room.revision,
     ready: Boolean(room.seats.p2),
     clashActor: room.match.phase === "ARCANE_CLASH_ROLL" ? (room.clashRoll === null ? "p1" : "p2") : null,
-    match: room.match,
+    match: hidden ? {
+      ...state,
+      selectedAttackElement: null,
+      selectedUseUltimate: false,
+      players: { ...state.players, [attacker]: { ...state.players[attacker], defenceLock: undefined } },
+    } : state,
     playback: room.playback,
     lastRoll: room.lastRoll,
     exitedBy: room.exitedBy,

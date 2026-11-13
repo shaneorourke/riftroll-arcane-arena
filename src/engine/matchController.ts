@@ -100,10 +100,11 @@ function getAITitle(difficulty: MatchSettings['aiDifficulty']): string {
 }
 
 export const SHIFT_ARENAS = {
-  glacier: { name: 'Glacier Rift', element: 'ice', label: 'Ice', icon: '❄' },
-  forge: { name: 'Ember Forge', element: 'fire', label: 'Fire', icon: '🔥' },
-  temple: { name: 'Flooded Temple', element: 'water', label: 'Water', icon: '🌊' },
-  storm: { name: 'Storm Spire', element: 'lightning', label: 'Lightning', icon: '⚡' },
+  glacier: { name: 'Glacier Rift', element: 'ice', bonus: 4, reward: 'Ice attack +4', icon: '❄' },
+  forge: { name: 'Ember Forge', element: 'fire', bonus: 3, reward: 'Fire attack +3', icon: '🔥' },
+  temple: { name: 'Flooded Temple', heal: 12, reward: '+12 HP', icon: '🌊' },
+  storm: { name: 'Storm Spire', arcane: 20, reward: '+20 Arcane', icon: '⚡' },
+  dark: { name: 'Dark Realm', reward: 'Hidden attacks', icon: '◈' },
 } as const;
 
 export const SHIFT_ARENA_IDS = Object.keys(SHIFT_ARENAS) as ArenaId[];
@@ -123,14 +124,34 @@ export function arenaShiftRemaining(state: MatchState): number {
 }
 
 export function openArenaShift(state: MatchState, id: ArenaId): MatchState {
-  if (state.phase !== 'SELECT_ATTACK_MAGIC' || getArenaShift(state)) return state;
-  return { ...state, arenaShift: { id, startedOn: state.turnNumber } };
+  if (state.phase !== 'SELECT_ATTACK_MAGIC' || arenaShiftRemaining(state) > 0) return state;
+  const arena = SHIFT_ARENAS[id];
+  const player = state.players[state.activeAttackerId];
+  return {
+    ...state,
+    arenaShift: { id, startedOn: state.turnNumber },
+    activeAttackerId: player.id === 'p1' ? 'p2' : 'p1',
+    players: {
+      ...state.players,
+      [player.id]: {
+        ...player,
+        hp: 'heal' in arena ? Math.min(player.maxHp, player.hp + arena.heal) : player.hp,
+        arcaneMeter: 'arcane' in arena ? Math.min(ARCANE_METER_MAX, player.arcaneMeter + arena.arcane) : player.arcaneMeter,
+      },
+    },
+  };
+}
+
+export function isAttackHidden(state: MatchState): boolean {
+  return state.phase === 'SELECT_DEFENCE_MAGIC' && getArenaShift(state)?.id === 'dark' &&
+    arenaShiftRemaining(state) > 0;
 }
 
 export function arenaAttackBonus(state: MatchState): number {
   const shift = getArenaShift(state);
-  return shift && state.selectedAttackElement === SHIFT_ARENAS[shift.id].element &&
-    arenaShiftRemaining(state) > 0 ? 2 : 0;
+  if (!shift || arenaShiftRemaining(state) === 0) return 0;
+  const arena = SHIFT_ARENAS[shift.id];
+  return 'element' in arena && state.selectedAttackElement === arena.element ? arena.bonus : 0;
 }
 
 export function selectAttackMagic(
