@@ -1,4 +1,4 @@
-import type { ElementSchool, MatchState, PlayerId } from '../engine/types';
+import type { ElementSchool, ExchangeResolutionResult, MatchState, PlayerId } from '../engine/types';
 
 export interface GuestSeat {
   code: string;
@@ -12,6 +12,7 @@ export interface RoomSnapshot {
   ready: boolean;
   match: MatchState;
   clashActor: PlayerId | null;
+  exchange?: { revision: number; resolution: ExchangeResolutionResult };
 }
 
 export type DuelIntent =

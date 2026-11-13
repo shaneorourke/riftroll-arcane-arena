@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArenaStage } from './ArenaStage';
 import { PlayerHudCard } from './PlayerHudCard';
 import { SpellSelector } from './SpellSelector';
@@ -28,9 +28,26 @@ export function OnlineDuel({ onClose, reducedMotion }: {
   const [busy, setBusy] = useState(false);
   const [ultimate, setUltimate] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [exchange, setExchange] = useState<RoomSnapshot['exchange']>();
+  const seenRoom = useRef<{ code: string; revision: number } | null>(null);
+
+  useEffect(() => {
+    if (!exchange) return;
+    const timer = window.setTimeout(() => setExchange(undefined),
+      reducedMotion ? 450 : exchange.resolution.isUltimate || exchange.resolution.attackTier === 'critical_strike' ? 2100 : 1500);
+    return () => window.clearTimeout(timer);
+  }, [exchange, reducedMotion]);
 
   function update(next: RoomSnapshot) {
-    setRoom((current) => !current || current.code !== next.code || next.revision >= current.revision ? next : current);
+    const seen = seenRoom.current;
+    if (seen?.code === next.code && next.revision <= seen.revision) return;
+    if (seen?.code === next.code && next.exchange?.revision === next.revision) {
+      setExchange(next.exchange);
+    } else {
+      setExchange(undefined);
+    }
+    seenRoom.current = { code: next.code, revision: next.revision };
+    setRoom(next);
   }
 
   useEffect(() => {
@@ -98,6 +115,8 @@ export function OnlineDuel({ onClose, reducedMotion }: {
     const url = new URL(location.href);
     url.searchParams.delete('room');
     history.replaceState(null, '', url);
+    seenRoom.current = null;
+    setExchange(undefined);
     setCode('');
     setSeat(null);
     setRoom(null);
@@ -108,7 +127,7 @@ export function OnlineDuel({ onClose, reducedMotion }: {
   }
 
   function act(intent: DuelIntent) {
-    if (!seat || !room || busy || connection) return;
+    if (!seat || !room || busy || connection || exchange) return;
     void run(async () => {
       update(await multiplayerTransport.act(seat, room.revision, intent));
       setUltimate(false);
@@ -124,9 +143,10 @@ export function OnlineDuel({ onClose, reducedMotion }: {
     : phase === 'SELECT_DEFENCE_MAGIC' || phase === 'ROLL_DEFENCE_D20' ? defender
     : phase === 'ARCANE_CLASH_ROLL' ? room?.clashActor
     : phase === 'LAST_STAND_PROMPT' ? state?.pendingLastStandPlayerId : null;
-  const acting = room && actor === room.seat;
+  const acting = !exchange && room && actor === room.seat;
   const player = room && state?.players[room.seat];
-  const disabled = busy || !!connection;
+  const disabled = busy || !!connection || !!exchange;
+  const resolution = exchange?.resolution;
 
   return (
     <section className="mx-auto max-w-4xl space-y-4 px-4 py-6">
@@ -169,11 +189,11 @@ export function OnlineDuel({ onClose, reducedMotion }: {
           <div className="grid gap-2 sm:grid-cols-2">
             {(['p1', 'p2'] as const).map((id) => <PlayerHudCard key={id} player={state.players[id]} role={id === attacker ? 'attacker' : 'defender'} selectedElement={id === attacker ? state.selectedAttackElement : state.selectedDefenceElement} requiredWins={2} compact />)}
           </div>
-          <ArenaStage p1={state.players.p1} p2={state.players.p2} activeAttackerId={state.activeAttackerId}
-            activeActorId={actor ?? null} selectedAttackElement={state.selectedAttackElement} selectedDefenceElement={state.selectedDefenceElement}
-            selectedUseUltimate={state.selectedUseUltimate} isAnimatingExchange={false} pendingResolution={null}
-            clashRolls={phase === 'ARCANE_CLASH_ROLL' ? {} : null} lastStandId={state.pendingLastStandPlayerId}
-            reducedMotion={reducedMotion} onSkipAnimation={() => {}} />
+          <ArenaStage p1={state.players.p1} p2={state.players.p2} activeAttackerId={resolution?.attackerId ?? state.activeAttackerId}
+            activeActorId={exchange ? null : actor ?? null} selectedAttackElement={resolution?.attackElement ?? state.selectedAttackElement} selectedDefenceElement={resolution?.defenceElement ?? state.selectedDefenceElement}
+            selectedUseUltimate={resolution?.isUltimate ?? state.selectedUseUltimate} isAnimatingExchange={!!resolution} pendingResolution={resolution ?? null}
+            clashRolls={phase === 'ARCANE_CLASH_ROLL' ? {} : null} lastStandId={exchange ? null : state.pendingLastStandPlayerId}
+            reducedMotion={reducedMotion} onSkipAnimation={() => setExchange(undefined)} />
           {acting && (phase === 'SELECT_ATTACK_MAGIC' || phase === 'SELECT_DEFENCE_MAGIC') && (
             <SpellSelector mode={phase === 'SELECT_ATTACK_MAGIC' ? 'attack' : 'defence'} playerName={player.name}
               arcaneMeter={player.arcaneMeter} useUltimate={ultimate} onToggleUltimate={setUltimate}
@@ -185,14 +205,14 @@ export function OnlineDuel({ onClose, reducedMotion }: {
               {phase === 'LAST_STAND_PROMPT' ? 'Roll 20 to survive' : phase === 'ARCANE_CLASH_ROLL' ? 'Roll again' : 'Roll'}
             </button>
           )}
-          {phase === 'BATTLE_OVER' && (
+          {!exchange && phase === 'BATTLE_OVER' && (
             room.seat === 'p1' ? <button className={button} disabled={disabled} onClick={() => act({ type: 'next-battle' })}>Next battle</button>
               : <p>Waiting for the host to start the next battle.</p>
           )}
-          {phase === 'MATCH_OVER' && state.matchWinnerId && <p className="text-xl font-bold">{state.players[state.matchWinnerId].name} wins!</p>}
-          {!acting && actor && <p role="status">Waiting for {state.players[actor].name}…</p>}
+          {!exchange && phase === 'MATCH_OVER' && state.matchWinnerId && <p className="text-xl font-bold">{state.players[state.matchWinnerId].name} wins!</p>}
+          {!exchange && !acting && actor && <p role="status">Waiting for {state.players[actor].name}…</p>}
           {state.attackRollResult !== null && <p>Attack roll {state.attackRollResult}</p>}
-          {state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
+          {!exchange && state.combatLog[0] && <p role="status">{state.combatLog[0].summary}</p>}
         </>
       )}
     </section>

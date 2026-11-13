@@ -6,7 +6,7 @@ import {
   completeExchangeAnimation, createInitialMatchState, selectAttackMagic, selectDefenceMagic,
   startNextBattle, submitArcaneClashRolls, submitAttackRoll, submitDefenceRoll, submitLastStandRoll,
 } from '../src/engine/matchController';
-import type { ElementSchool, MatchState, PlayerId } from '../src/engine/types';
+import type { ElementSchool, ExchangeResolutionResult, MatchState, PlayerId } from '../src/engine/types';
 
 const ROOM_LIFETIME_MS = 60 * 60 * 1000;
 const MAX_ROOMS = 500;
@@ -17,6 +17,7 @@ interface Room {
   revision: number;
   match: MatchState;
   clashRoll: number | null;
+  exchange?: { revision: number; resolution: ExchangeResolutionResult };
 }
 
 const rooms = new Map<string, Room>();
@@ -39,6 +40,7 @@ function snapshot(code: string, room: Room, seat: PlayerId) {
     ready: Boolean(room.seats.p2),
     clashActor: room.match.phase === "ARCANE_CLASH_ROLL" ? (room.clashRoll === null ? "p1" : "p2") : null,
     match: room.match,
+    exchange: room.exchange,
   };
 }
 
@@ -119,7 +121,10 @@ function applyIntent(room: Room, seat: PlayerId, body: Record<string, unknown>):
       next = submitAttackRoll(state, randomInt(1, 21));
     } else if (state.phase === 'ROLL_DEFENCE_D20' && seat === defender) {
       next = submitDefenceRoll(state, randomInt(1, 21));
-      if (next.phase === 'ANIMATING_EXCHANGE') next = completeExchangeAnimation(next);
+      if (next.phase === 'ANIMATING_EXCHANGE' && next.pendingResolution) {
+        room.exchange = { revision: room.revision + 1, resolution: next.pendingResolution };
+        next = completeExchangeAnimation(next);
+      }
     } else if (state.phase === 'LAST_STAND_PROMPT' && seat === state.pendingLastStandPlayerId) {
       next = submitLastStandRoll(state, randomInt(1, 21));
     } else if (state.phase === 'ARCANE_CLASH_ROLL') {

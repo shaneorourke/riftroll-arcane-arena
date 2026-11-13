@@ -66,6 +66,10 @@ export default function App() {
   const [view, setView] = useState<ScreenView>(() => new URLSearchParams(location.search).has('room') ? 'ONLINE_LOBBY' : 'MENU');
   const [hasStartedMatch, setHasStartedMatch] = useState(false);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [view]);
+
   const [settings, setSettings] = useState<MatchSettings>({
     mode: 'solo',
     format: 3, // Best of 3 default
@@ -288,7 +292,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-[#090812] text-slate-100">
       {/* Strict 3-Zone Top Bar Contract */}
-      <header className="flex items-center justify-between gap-8 px-6 py-3.5 border-b border-slate-800/90 bg-[#0c0a18]/90 backdrop-blur-md sticky top-0 z-40">
+      <header className="sticky top-0 z-[60] flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-slate-800/90 bg-[#0c0a18]/95 px-3 py-2 backdrop-blur-md sm:px-6 lg:flex-nowrap">
         {/* Zone 1: Single text element wordmark */}
         <button
           type="button"
@@ -299,39 +303,42 @@ export default function App() {
         </button>
 
         {/* Zone 2: 4–5 single-line text navigation links */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-300">
+        <nav aria-label="Main navigation" className="order-last flex w-full flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs font-medium text-slate-300 sm:gap-x-5 lg:order-none lg:w-auto lg:text-sm">
           <button
             type="button"
             onClick={() => launchNewMatch({ mode: 'solo' })}
-            className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-9 rounded px-1.5 whitespace-nowrap hover:text-amber-300 focus-visible:outline-amber-300 cursor-pointer"
           >
             Play Solo
           </button>
           <button
             type="button"
             onClick={() => launchNewMatch({ mode: 'local' })}
-            className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-9 rounded px-1.5 whitespace-nowrap hover:text-amber-300 focus-visible:outline-amber-300 cursor-pointer"
           >
             Local Multiplayer
           </button>
           <button
             type="button"
+            aria-current={view === 'ONLINE_LOBBY' ? 'page' : undefined}
             onClick={() => setView('ONLINE_LOBBY')}
-            className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-9 rounded px-1.5 whitespace-nowrap hover:text-amber-300 focus-visible:outline-amber-300 cursor-pointer"
           >
             Online Rooms
           </button>
           <button
             type="button"
+            aria-current={view === 'SETTINGS' ? 'page' : undefined}
             onClick={() => setView('SETTINGS')}
-            className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-9 rounded px-1.5 whitespace-nowrap hover:text-amber-300 focus-visible:outline-amber-300 cursor-pointer"
           >
             Settings
           </button>
           <button
             type="button"
+            aria-current={view === 'HOW_TO_PLAY' ? 'page' : undefined}
             onClick={() => setView('HOW_TO_PLAY')}
-            className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            className="min-h-9 rounded px-1.5 whitespace-nowrap hover:text-amber-300 focus-visible:outline-amber-300 cursor-pointer"
           >
             How to Play
           </button>
