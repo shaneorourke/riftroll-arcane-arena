@@ -1,0 +1,6 @@
+{
+  "name": "RIFTROLL: Arcane Arena",
+  "description": "Fast-paced magical arena battler where powerful mages duel using 8 schools of elemental magic and D20 dice.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
